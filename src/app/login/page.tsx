@@ -85,6 +85,11 @@ export default function LoginPage() {
         </div>
 
       </div>
+
+      {/* Developer Signature */}
+      <div className="fixed bottom-1 right-3 bg-red-600 text-yellow-400 font-bold px-5 py-3 shadow-lg z-50 text-lg">
+        Dev by Nguyễn Thế Hùng
+      </div>
     </div>
   );
 }
