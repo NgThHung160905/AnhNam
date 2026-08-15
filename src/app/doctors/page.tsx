@@ -15,6 +15,8 @@ export default function DoctorsPage() {
   const [newDoctor, setNewDoctor] = useState({ name: "", specialty: "", phone: "", email: "" });
   const [editingDoctorId, setEditingDoctorId] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     const saved = localStorage.getItem("khambenh_doctors");
@@ -95,6 +97,9 @@ export default function DoctorsPage() {
     return matchSearch(d.name, searchTerm) || matchSearch(d.id, searchTerm);
   });
 
+  const totalPages = Math.ceil(filteredDoctors.length / itemsPerPage);
+  const paginatedDoctors = filteredDoctors.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -122,7 +127,10 @@ export default function DoctorsPage() {
             <input
               type="text"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
               placeholder="Tìm kiếm bác sĩ..."
               className="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm text-slate-900 placeholder-slate-500"
             />
@@ -142,7 +150,7 @@ export default function DoctorsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
-              {filteredDoctors.map((doctor) => (
+              {paginatedDoctors.map((doctor) => (
                 <tr key={doctor.id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-6 py-4 font-medium text-emerald-600">{doctor.id}</td>
                   <td className="px-6 py-4 font-medium text-slate-800">{doctor.name}</td>
@@ -168,6 +176,28 @@ export default function DoctorsPage() {
             </tbody>
           </table>
         </div>
+
+        {totalPages > 1 && (
+          <div className="p-4 border-t border-slate-200 flex items-center justify-center gap-4 bg-slate-50">
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1.5 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              &larr;
+            </button>
+            <span className="text-sm text-slate-600 font-medium">
+              Trang {currentPage} / {totalPages}
+            </span>
+            <button
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1.5 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              &rarr;
+            </button>
+          </div>
+        )}
       </div>
 
       {showAddModal && (

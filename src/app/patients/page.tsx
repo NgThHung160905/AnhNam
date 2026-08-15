@@ -19,25 +19,27 @@ export default function PatientsPage() {
   const [newPatient, setNewPatient] = useState({ name: "", phone: "", gender: "Nam", address: "" });
   const [editingPatientId, setEditingPatientId] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const handleSavePatient = () => {
     if (!newPatient.name.trim() || !newPatient.phone.trim()) {
       alert("Vui lòng nhập đầy đủ Họ và tên và Số điện thoại!");
       return;
     }
-    
+
     if (editingPatientId) {
       setPatients(patients.map(p => p.id === editingPatientId ? { id: editingPatientId, ...newPatient } : p));
     } else {
       // Generate new ID like BN003
-      const nextIdNum = patients.length > 0 
+      const nextIdNum = patients.length > 0
         ? Math.max(...patients.map(p => parseInt(p.id.replace('BN', '')))) + 1
         : 1;
       const newId = `BN${String(nextIdNum).padStart(3, '0')}`;
-      
+
       setPatients([{ id: newId, ...newPatient }, ...patients]);
     }
-    
+
     setNewPatient({ name: "", phone: "", gender: "Nam", address: "" });
     setShowAddModal(false);
     setEditingPatientId(null);
@@ -77,8 +79,8 @@ export default function PatientsPage() {
   // Remove Vietnamese accents for better searching
   const removeAccents = (str: string) => {
     return str.normalize('NFD')
-              .replace(/[\u0300-\u036f]/g, '')
-              .replace(/đ/g, 'd').replace(/Đ/g, 'D');
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd').replace(/Đ/g, 'D');
   };
 
   const matchSearch = (text: string, search: string) => {
@@ -93,6 +95,9 @@ export default function PatientsPage() {
   const filteredPatients = patients.filter(p => {
     return matchSearch(p.name, searchTerm) || matchSearch(p.id, searchTerm);
   });
+
+  const totalPages = Math.ceil(filteredPatients.length / itemsPerPage);
+  const paginatedPatients = filteredPatients.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
     <div className="space-y-6">
@@ -121,7 +126,10 @@ export default function PatientsPage() {
             <input
               type="text"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
               placeholder="Tìm kiếm theo tên hoặc mã bệnh nhân..."
               className="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm text-slate-900 placeholder-slate-500"
             />
@@ -141,7 +149,7 @@ export default function PatientsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
-              {filteredPatients.map((patient) => (
+              {paginatedPatients.map((patient) => (
                 <tr key={patient.id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-6 py-4 font-medium text-blue-600">{patient.id}</td>
                   <td className="px-6 py-4 font-medium text-slate-800">{patient.name}</td>
@@ -150,13 +158,13 @@ export default function PatientsPage() {
                   <td className="px-6 py-4 text-slate-600">{patient.address}</td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <button 
+                      <button
                         onClick={() => handleEditClick(patient)}
                         className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
-                      <button 
+                      <button
                         onClick={() => handleDeletePatient(patient.id)}
                         className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                       >
@@ -169,9 +177,31 @@ export default function PatientsPage() {
             </tbody>
           </table>
         </div>
+
+        {totalPages > 1 && (
+          <div className="p-4 border-t border-slate-200 flex items-center justify-center gap-4 bg-slate-50">
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1.5 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              &larr;
+            </button>
+            <span className="text-sm text-slate-600 font-medium">
+              Trang {currentPage} / {totalPages}
+            </span>
+            <button
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1.5 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              &rarr;
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Add Modal */}
+      {/* Modal Thêm/Sửa */}
       {showAddModal && (
         <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50 p-4" onClick={() => { setShowAddModal(false); setEditingPatientId(null); }}>
           <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6" onClick={e => e.stopPropagation()}>
@@ -181,30 +211,30 @@ export default function PatientsPage() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Họ và tên</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={newPatient.name}
-                  onChange={(e) => setNewPatient({...newPatient, name: e.target.value})}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-900" 
+                  onChange={(e) => setNewPatient({ ...newPatient, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-900"
                   placeholder="Nhập họ và tên..."
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Số điện thoại</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     value={newPatient.phone}
-                    onChange={(e) => setNewPatient({...newPatient, phone: e.target.value})}
+                    onChange={(e) => setNewPatient({ ...newPatient, phone: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-900"
                     placeholder="Nhập số điện thoại..."
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Giới tính</label>
-                  <select 
+                  <select
                     value={newPatient.gender}
-                    onChange={(e) => setNewPatient({...newPatient, gender: e.target.value})}
+                    onChange={(e) => setNewPatient({ ...newPatient, gender: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-900"
                   >
                     <option value="Nam">Nam</option>
@@ -214,10 +244,10 @@ export default function PatientsPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Địa chỉ</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={newPatient.address}
-                  onChange={(e) => setNewPatient({...newPatient, address: e.target.value})}
+                  onChange={(e) => setNewPatient({ ...newPatient, address: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-900"
                   placeholder="Nhập địa chỉ..."
                 />

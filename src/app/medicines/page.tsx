@@ -16,6 +16,8 @@ export default function MedicinesPage() {
   const [newMed, setNewMed] = useState({ name: "", type: "", company: "", price: "", unit: "", stock: "" });
   const [editingMedId, setEditingMedId] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     const loadMeds = () => {
@@ -88,6 +90,9 @@ export default function MedicinesPage() {
     return matchSearch(m.name, searchTerm) || matchSearch(m.id, searchTerm);
   });
 
+  const totalPages = Math.ceil(filteredMedicines.length / itemsPerPage);
+  const paginatedMedicines = filteredMedicines.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -115,7 +120,10 @@ export default function MedicinesPage() {
             <input
               type="text"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
               placeholder="Tìm kiếm thuốc..."
               className="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm text-slate-900 placeholder-slate-500"
             />
@@ -137,7 +145,7 @@ export default function MedicinesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
-              {filteredMedicines.map((med) => (
+              {paginatedMedicines.map((med) => (
                 <tr key={med.id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-6 py-4 font-medium text-amber-600">{med.id}</td>
                   <td className="px-6 py-4 font-medium text-slate-800">{med.name}</td>
@@ -161,6 +169,28 @@ export default function MedicinesPage() {
             </tbody>
           </table>
         </div>
+
+        {totalPages > 1 && (
+          <div className="p-4 border-t border-slate-200 flex items-center justify-center gap-4 bg-slate-50">
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1.5 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              &larr;
+            </button>
+            <span className="text-sm text-slate-600 font-medium">
+              Trang {currentPage} / {totalPages}
+            </span>
+            <button
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1.5 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              &rarr;
+            </button>
+          </div>
+        )}
       </div>
 
       {showAddModal && (

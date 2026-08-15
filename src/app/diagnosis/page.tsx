@@ -33,6 +33,8 @@ export default function DiagnosisPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [highlightedDoctorIndex, setHighlightedDoctorIndex] = useState(-1);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const getCurrentFormattedDate = () => {
     const now = new Date();
     const pad = (n: number) => n.toString().padStart(2, "0");
@@ -401,6 +403,9 @@ export default function DiagnosisPage() {
       matchSearch(diag.serviceName, searchTerm);
   });
 
+  const totalPages = Math.ceil(filteredDiagnoses.length / itemsPerPage);
+  const paginatedDiagnoses = filteredDiagnoses.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
   const totalRevenue = filteredDiagnoses.reduce((acc, diag) => {
     const meds = getPrescriptionDetails(diag);
     const diagTotal = meds.reduce((sum: number, med: any) => sum + (med.price * med.quantity), 0);
@@ -429,7 +434,7 @@ export default function DiagnosisPage() {
         <div className="p-4 border-b border-slate-200 flex items-center gap-4 bg-slate-50">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Tìm kiếm theo tên bệnh nhân..." className="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm text-slate-900 placeholder-slate-500" />
+            <input type="text" value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }} placeholder="Tìm kiếm theo tên bệnh nhân..." className="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm text-slate-900 placeholder-slate-500" />
           </div>
         </div>
         <div className="overflow-x-auto">
@@ -440,14 +445,14 @@ export default function DiagnosisPage() {
                 <th className="px-6 py-3 font-medium">B&#7879;nh nh&#226;n</th>
                 <th className="px-6 py-3 font-medium">Bác sĩ khám</th>
                 <th className="px-6 py-3 font-medium">Ch&#7849;n &#273;o&#225;n</th>
-                <th className="px-6 py-3 font-medium">Thuốc Kê</th>
-                <th className="px-6 py-3 font-medium">Lịch Tái Khám</th>
-                <th className="px-6 py-3 font-medium">Lưu Ý</th>
+                <th className="px-6 py-3 font-medium">Thuốc kê</th>
+                <th className="px-6 py-3 font-medium">Lịch tái khám</th>
+                <th className="px-6 py-3 font-medium">Lưu ý</th>
                 <th className="px-6 py-3 font-medium text-right">Toa thuốc</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
-              {filteredDiagnoses.map((diag) => (
+              {paginatedDiagnoses.map((diag) => (
                 <tr key={diag.id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-6 py-4 text-slate-500">{formatDateDisplay(diag.date)}</td>
                   <td className="px-6 py-4 font-medium text-slate-800">{diag.patientName}</td>
@@ -490,6 +495,28 @@ export default function DiagnosisPage() {
             </tbody>
           </table>
         </div>
+
+        {totalPages > 1 && (
+          <div className="p-4 border-t border-slate-200 flex items-center justify-center gap-4 bg-slate-50">
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1.5 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              &larr;
+            </button>
+            <span className="text-sm text-slate-600 font-medium">
+              Trang {currentPage} / {totalPages}
+            </span>
+            <button
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1.5 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              &rarr;
+            </button>
+          </div>
+        )}
       </div>
 
       {showAddModal && (
