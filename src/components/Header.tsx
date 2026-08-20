@@ -81,7 +81,9 @@ export default function Header({ onMenuClick }: HeaderProps) {
 
                     importedObj.forEach(item => {
                       if (item && item.id !== undefined) {
-                        existingMap.set(item.id, item); // Dữ liệu import sẽ ghi đè dữ liệu cũ nếu trùng ID
+                        if (!existingMap.has(item.id)) {
+                          existingMap.set(item.id, item); // Chỉ thêm mới nếu chưa có, không ghi đè dữ liệu cũ
+                        }
                       }
                     });
 
