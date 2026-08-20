@@ -64,7 +64,37 @@ export default function Header({ onMenuClick }: HeaderProps) {
           let importedCount = 0;
           for (const key in data) {
             if (key.startsWith("khambenh_") && data[key] !== null) {
-              localStorage.setItem(key, data[key]);
+              const existingStr = localStorage.getItem(key);
+              let mergedData = data[key];
+
+              if (existingStr) {
+                try {
+                  const existingObj = JSON.parse(existingStr);
+                  const importedObj = JSON.parse(data[key]);
+
+                  if (Array.isArray(existingObj) && Array.isArray(importedObj)) {
+                    // Cả hai đều là mảng, tiến hành gộp theo id
+                    const existingMap = new Map();
+                    existingObj.forEach(item => {
+                      if (item && item.id !== undefined) existingMap.set(item.id, item);
+                    });
+
+                    importedObj.forEach(item => {
+                      if (item && item.id !== undefined) {
+                        existingMap.set(item.id, item); // Dữ liệu import sẽ ghi đè dữ liệu cũ nếu trùng ID
+                      }
+                    });
+
+                    // Nếu có những phần tử không có ID (hiếm gặp), ta sẽ không dùng map được, 
+                    // nhưng trong ứng dụng này patients/medicines/diagnoses đều có ID.
+                    mergedData = JSON.stringify(Array.from(existingMap.values()));
+                  }
+                } catch (e) {
+                  console.error("Lỗi khi gộp dữ liệu cho key", key, e);
+                }
+              }
+
+              localStorage.setItem(key, mergedData);
               importedCount++;
             }
           }
