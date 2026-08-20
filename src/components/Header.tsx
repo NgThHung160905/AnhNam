@@ -117,7 +117,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
 
   return (
     <header
-      className="h-16 px-6 flex items-center justify-between sticky top-0 z-20"
+      className="h-16 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-20 gap-4"
       style={{
         background: "rgba(0, 0, 0, 0.35)",
         backdropFilter: "blur(10px)",
@@ -125,7 +125,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
       }}
     >
       {/* Trái: Icon Menu */}
-      <div className="flex items-center w-1/4">
+      <div className="flex items-center shrink-0">
         <button
           onClick={onMenuClick}
           className="text-white/70 hover:text-white transition-colors p-2 rounded-lg hover:bg-white/10"
@@ -136,36 +136,36 @@ export default function Header({ onMenuClick }: HeaderProps) {
       </div>
 
       {/* Giữa: Tiêu đề */}
-      <div className="flex-1 flex justify-center">
-        <h2 className="text-lg font-semibold text-white text-center">
+      <div className="flex-1 flex justify-center overflow-hidden">
+        <h2 className="text-base sm:text-lg font-semibold text-white truncate text-center">
           Sau Trận Chiến Ta Viết Lên 2 chữ &quot;GG&quot;
         </h2>
       </div>
 
       {/* Phải: User info */}
-      <div className="flex items-center w-1/4 justify-end gap-3">
+      <div className="flex items-center justify-end gap-2 shrink-0">
         {user ? (
           <>
             <button
               onClick={handleImport}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-emerald-300 hover:text-emerald-200 rounded-lg transition-colors"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium text-emerald-300 hover:text-emerald-200 rounded-lg transition-colors"
               style={{ background: "rgba(16,185,129,0.15)" }}
               title="Nhập dữ liệu"
             >
               <Upload className="w-4 h-4" />
-              <span className="hidden sm:inline">Import</span>
+              <span className="hidden md:inline">Import</span>
             </button>
             <button
               onClick={handleExport}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-300 hover:text-blue-200 rounded-lg transition-colors"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium text-blue-300 hover:text-blue-200 rounded-lg transition-colors"
               style={{ background: "rgba(59,130,246,0.15)" }}
               title="Xuất dữ liệu"
             >
               <Download className="w-4 h-4" />
-              <span className="hidden sm:inline">Export</span>
+              <span className="hidden md:inline">Export</span>
             </button>
             <div
-              className="flex items-center gap-2 text-sm font-medium text-white px-3 py-1.5 rounded-full"
+              className="flex items-center gap-1.5 text-sm font-medium text-white px-2.5 py-1.5 rounded-full"
               style={{ background: "rgba(255,255,255,0.15)" }}
             >
               <UserIcon className="w-4 h-4" />
@@ -173,17 +173,17 @@ export default function Header({ onMenuClick }: HeaderProps) {
             </div>
             <button
               onClick={handleLogout}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-300 hover:text-red-200 rounded-lg transition-colors"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium text-red-300 hover:text-red-200 rounded-lg transition-colors whitespace-nowrap"
               style={{ background: "rgba(255,80,80,0.15)" }}
             >
               <LogOut className="w-4 h-4" />
-              <span className="hidden sm:inline">Đăng xuất</span>
+              <span className="hidden md:inline">Đăng xuất</span>
             </button>
           </>
         ) : (
           <button
             onClick={() => router.push("/login")}
-            className="text-sm font-medium text-white hover:text-white/80"
+            className="text-sm font-medium text-white hover:text-white/80 whitespace-nowrap"
           >
             Đăng nhập
           </button>
