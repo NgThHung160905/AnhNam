@@ -5,7 +5,6 @@ import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
-import FlyingBird from "./FlyingBird";
 import { Loader2 } from "lucide-react";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
@@ -40,7 +39,6 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     <div className="flex flex-col min-h-screen transition-all duration-300 ease-in-out"
       style={{ marginLeft: sidebarOpen ? "256px" : "0px" }}
     >
-      <FlyingBird />
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <Header onMenuClick={() => setSidebarOpen((prev) => !prev)} />
       <main className="flex-1 p-6 overflow-auto">

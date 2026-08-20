@@ -6,7 +6,6 @@ import { Users, Stethoscope, Pill, ClipboardList } from "lucide-react";
 
 const navItems = [
   { name: "Bệnh Nhân", href: "/patients", icon: Users },
-  { name: "Bác Sĩ", href: "/doctors", icon: Stethoscope },
   { name: "Thuốc", href: "/medicines", icon: Pill },
   { name: "Khám & Kê toa", href: "/diagnosis", icon: ClipboardList },
 ];

@@ -3,7 +3,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { auth } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
-import { LogOut, User as UserIcon, Menu } from "lucide-react";
+import { LogOut, User as UserIcon, Menu, Download, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface HeaderProps {
@@ -21,6 +21,68 @@ export default function Header({ onMenuClick }: HeaderProps) {
     } catch (error) {
       console.error("Lỗi đăng xuất:", error);
     }
+  };
+
+  const handleExport = () => {
+    const data: Record<string, string | null> = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith("khambenh_")) {
+        data[key] = localStorage.getItem(key);
+      }
+    }
+    const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    
+    const now = new Date();
+    const dateStr = `${now.getDate().toString().padStart(2, '0')}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getFullYear()}`;
+    const timeStr = `${now.getHours().toString().padStart(2, '0')}h${now.getMinutes().toString().padStart(2, '0')}m`;
+    
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${dateStr} (${timeStr}).sav`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImport = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".sav";
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const content = event.target?.result as string;
+          const data = JSON.parse(content);
+          
+          let importedCount = 0;
+          for (const key in data) {
+            if (key.startsWith("khambenh_") && data[key] !== null) {
+              localStorage.setItem(key, data[key]);
+              importedCount++;
+            }
+          }
+          
+          if (importedCount > 0) {
+            alert(`Nhập dữ liệu thành công! Đã khôi phục ${importedCount} mục.`);
+            window.location.reload();
+          } else {
+            alert("File không chứa dữ liệu hợp lệ.");
+          }
+        } catch (error) {
+          console.error("Lỗi khi nhập file:", error);
+          alert("Lỗi khi đọc file. Vui lòng kiểm tra lại file .sav.");
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
   };
 
   return (
@@ -54,12 +116,30 @@ export default function Header({ onMenuClick }: HeaderProps) {
       <div className="flex items-center w-1/4 justify-end gap-3">
         {user ? (
           <>
+            <button
+              onClick={handleImport}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-emerald-300 hover:text-emerald-200 rounded-lg transition-colors"
+              style={{ background: "rgba(16,185,129,0.15)" }}
+              title="Nhập dữ liệu"
+            >
+              <Upload className="w-4 h-4" />
+              <span className="hidden sm:inline">Import</span>
+            </button>
+            <button
+              onClick={handleExport}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-300 hover:text-blue-200 rounded-lg transition-colors"
+              style={{ background: "rgba(59,130,246,0.15)" }}
+              title="Xuất dữ liệu"
+            >
+              <Download className="w-4 h-4" />
+              <span className="hidden sm:inline">Export</span>
+            </button>
             <div
               className="flex items-center gap-2 text-sm font-medium text-white px-3 py-1.5 rounded-full"
               style={{ background: "rgba(255,255,255,0.15)" }}
             >
               <UserIcon className="w-4 h-4" />
-              <span className="hidden sm:inline">{user.email}</span>
+              <span className="hidden lg:inline">{user.email}</span>
             </div>
             <button
               onClick={handleLogout}

@@ -4,16 +4,16 @@ import { useState, useEffect } from "react";
 import { Search, Pill, Edit2, Trash2 } from "lucide-react";
 
 const DUMMY_MEDICINES = [
-  { id: "T001", name: "Paracetamol 500mg", type: "Giảm đau hạ sốt", company: "Dược Hậu Giang", price: "5,000", unit: "Viên", stock: 100 },
-  { id: "T002", name: "Amoxicillin 500mg", type: "Kháng sinh", company: "Dược Hậu Giang", price: "10,000", unit: "Viên", stock: 200 },
-  { id: "T003", name: "Vitamin C 1000mg", type: "Vitamin", company: "Traphaco", price: "20,000", unit: "Hộp", stock: 50 },
+  { id: "T001", name: "Paracetamol 500mg", type: "Giảm đau hạ sốt", unit: "Viên", stock: 100 },
+  { id: "T002", name: "Amoxicillin 500mg", type: "Kháng sinh", unit: "Viên", stock: 200 },
+  { id: "T003", name: "Vitamin C 1000mg", type: "Vitamin", unit: "Hộp", stock: 50 },
 ];
 
 export default function MedicinesPage() {
   const [medicines, setMedicines] = useState(DUMMY_MEDICINES);
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newMed, setNewMed] = useState({ name: "", type: "", company: "", price: "", unit: "", stock: "" });
+  const [newMed, setNewMed] = useState({ name: "", type: "", unit: "", stock: "" });
   const [editingMedId, setEditingMedId] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -39,6 +39,13 @@ export default function MedicinesPage() {
     }
   }, [medicines, isLoaded]);
 
+  // Auto-save draft khi đang nhập thuốc mới
+  useEffect(() => {
+    if (showAddModal && !editingMedId && isLoaded) {
+      localStorage.setItem("khambenh_draft_med", JSON.stringify(newMed));
+    }
+  }, [newMed, showAddModal, editingMedId, isLoaded]);
+
   const handleSaveMed = () => {
     if (!newMed.name.trim() || !newMed.type.trim()) {
       alert("Vui lòng nhập Tên thuốc và Loại!");
@@ -53,14 +60,15 @@ export default function MedicinesPage() {
       setMedicines([{ id: newId, ...newMed, stock: Number(newMed.stock) }, ...medicines]);
     }
 
-    setNewMed({ name: "", type: "", company: "", price: "", unit: "", stock: "" });
+    setNewMed({ name: "", type: "", unit: "", stock: "" });
     setShowAddModal(false);
     setEditingMedId(null);
+    localStorage.removeItem("khambenh_draft_med");
   };
 
   const handleEditClick = (med: any) => {
     setEditingMedId(med.id);
-    setNewMed({ name: med.name, type: med.type, company: med.company, price: med.price, unit: med.unit, stock: med.stock ? med.stock.toString() : "" });
+    setNewMed({ name: med.name, type: med.type, unit: med.unit, stock: med.stock ? med.stock.toString() : "" });
     setShowAddModal(true);
   };
 
@@ -87,7 +95,7 @@ export default function MedicinesPage() {
   };
 
   const filteredMedicines = medicines.filter(m => {
-    return matchSearch(m.name, searchTerm) || matchSearch(m.id, searchTerm);
+    return matchSearch(m.name, searchTerm) || matchSearch(m.id, searchTerm) || matchSearch(m.type || "", searchTerm);
   });
 
   const totalPages = Math.ceil(filteredMedicines.length / itemsPerPage);
@@ -103,7 +111,12 @@ export default function MedicinesPage() {
         <button
           onClick={() => {
             setEditingMedId(null);
-            setNewMed({ name: "", type: "", company: "", price: "", unit: "", stock: "" });
+            const draft = localStorage.getItem("khambenh_draft_med");
+            if (draft) {
+              try { setNewMed(JSON.parse(draft)); } catch { setNewMed({ name: "", type: "", unit: "", stock: "" }); }
+            } else {
+              setNewMed({ name: "", type: "", unit: "", stock: "" });
+            }
             setShowAddModal(true);
           }}
           className="flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg transition-colors font-medium shadow-sm shadow-amber-500/20"
@@ -137,8 +150,6 @@ export default function MedicinesPage() {
                 <th className="px-6 py-3 font-medium">Mã Thuốc</th>
                 <th className="px-6 py-3 font-medium">Tên Thuốc</th>
                 <th className="px-6 py-3 font-medium">Loại</th>
-                <th className="px-6 py-3 font-medium">Nhà sản xuất</th>
-                <th className="px-6 py-3 font-medium">Giá</th>
                 <th className="px-6 py-3 font-medium">Đơn vị</th>
                 <th className="px-6 py-3 font-medium">Kho</th>
                 <th className="px-6 py-3 font-medium text-right">Thao tác</th>
@@ -150,8 +161,6 @@ export default function MedicinesPage() {
                   <td className="px-6 py-4 font-medium text-amber-600">{med.id}</td>
                   <td className="px-6 py-4 font-medium text-slate-800">{med.name}</td>
                   <td className="px-6 py-4 text-slate-600">{med.type}</td>
-                  <td className="px-6 py-4 text-slate-600">{med.company}</td>
-                  <td className="px-6 py-4 font-medium text-slate-700">{med.price} ₫</td>
                   <td className="px-6 py-4 text-slate-600">{med.unit}</td>
                   <td className="px-6 py-4 font-semibold text-emerald-600">{med.stock !== undefined ? med.stock : "-"}</td>
                   <td className="px-6 py-4 text-right">
@@ -215,33 +224,23 @@ export default function MedicinesPage() {
                     placeholder="Viên, Hộp, Vỉ..." />
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Nhà sản xuất</label>
-                  <input type="text" value={newMed.company} onChange={e => setNewMed({ ...newMed, company: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white text-slate-900"
-                    placeholder="Nhà sản xuất..." />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Giá</label>
-                  <input type="text" value={newMed.price} onChange={e => setNewMed({ ...newMed, price: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white text-slate-900"
-                    placeholder="Nhập giá..." />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Kho</label>
-                  <input type="number" min="0" value={newMed.stock} onChange={e => setNewMed({ ...newMed, stock: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white text-slate-900"
-                    placeholder="Tồn kho..." />
-                </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Kho</label>
+                <input type="number" min="0" value={newMed.stock} onChange={e => setNewMed({ ...newMed, stock: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white text-slate-900"
+                  placeholder="Tồn kho..." />
               </div>
-              <div className="flex justify-end gap-3 mt-6">
-                <button onClick={() => { setShowAddModal(false); setEditingMedId(null); }} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors">Hủy</button>
-                <button onClick={handleSaveMed} className="px-4 py-2 bg-amber-600 text-white rounded-lg font-medium hover:bg-amber-700 transition-colors">Lưu lại</button>
-              </div>
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button onClick={() => { setShowAddModal(false); setEditingMedId(null); }} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors">Hủy</button>
+              <button onClick={handleSaveMed} className="px-4 py-2 bg-amber-600 text-white rounded-lg font-medium hover:bg-amber-700 transition-colors">Lưu lại</button>
             </div>
           </div>
         </div>
       )}
     </div>
-  );
+  )
+    ;
 }
 
 

@@ -3,12 +3,12 @@
 import { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, addDoc, query, orderBy } from "firebase/firestore"; // Will use firestore in real app
-import { Plus, Search, UserPlus, Edit2, Trash2 } from "lucide-react";
+import { Plus, Search, UserPlus, Edit2, Trash2, Activity, UserMinus, UserCheck, AlertTriangle } from "lucide-react";
 
 // Dummy data for preview
 const DUMMY_PATIENTS = [
-  { id: "BN001", name: "Nguyễn Văn A", gender: "Nam", phone: "0901234567", address: "Hà Nội" },
-  { id: "BN002", name: "Trần Thị B", gender: "Nữ", phone: "0987654321", address: "TP HCM" },
+  { id: "BN001", name: "Nguyễn Văn A", gender: "Nam", phone: "0901234567", address: "Hà Nội", dob: "2020-01-01", weight: "15", height: "100", temperature: "37" },
+  { id: "BN002", name: "Trần Thị B", gender: "Nữ", phone: "0987654321", address: "TP HCM", dob: "2019-05-15", weight: "20", height: "115", temperature: "37" },
 ];
 
 export default function PatientsPage() {
@@ -16,11 +16,54 @@ export default function PatientsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newPatient, setNewPatient] = useState({ name: "", phone: "", gender: "Nam", address: "" });
+  const [newPatient, setNewPatient] = useState({ name: "", phone: "", gender: "Nam", address: "", dob: "", weight: "", height: "", temperature: "37" });
   const [editingPatientId, setEditingPatientId] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+
+  const calculateAge = (dob: string) => {
+    if (!dob) return "";
+    const birthDate = new Date(dob);
+    const today = new Date();
+    if (isNaN(birthDate.getTime())) return "";
+
+    let months = (today.getFullYear() - birthDate.getFullYear()) * 12;
+    months -= birthDate.getMonth();
+    months += today.getMonth();
+
+    if (today.getDate() < birthDate.getDate()) {
+      months--;
+    }
+
+    if (months < 0) return "Chưa sinh";
+    if (months === 0) return "Dưới 1 tháng tuổi";
+
+    const years = Math.floor(months / 12);
+    const remainingMonths = months % 12;
+
+    if (years === 0) return `${months} tháng tuổi`;
+    if (remainingMonths === 0) return `${months} tháng (${years} tuổi)`;
+    return `${months} tháng (${years} tuổi ${remainingMonths} tháng)`;
+  };
+
+  const calculateBMI = (weight: string, height: string) => {
+    const w = parseFloat(weight);
+    const h = parseFloat(height) / 100;
+    if (w > 0 && h > 0) {
+      return (w / (h * h)).toFixed(1);
+    }
+    return "";
+  };
+
+  const getBMIDescription = (bmiStr: string) => {
+    const bmi = parseFloat(bmiStr);
+    if (isNaN(bmi)) return null;
+    if (bmi < 18.5) return { text: "Gầy (Thiếu cân)", color: "text-amber-700 bg-amber-50 border-amber-200", icon: UserMinus };
+    if (bmi < 23) return { text: "Bình thường (Cân nặng lý tưởng)", color: "text-emerald-700 bg-emerald-50 border-emerald-200", icon: UserCheck };
+    if (bmi < 25) return { text: "Thừa cân", color: "text-orange-700 bg-orange-50 border-orange-200", icon: UserPlus };
+    return { text: "Béo phì", color: "text-red-700 bg-red-50 border-red-200", icon: AlertTriangle };
+  };
 
   const handleSavePatient = () => {
     if (!newPatient.name.trim() || !newPatient.phone.trim()) {
@@ -40,14 +83,24 @@ export default function PatientsPage() {
       setPatients([{ id: newId, ...newPatient }, ...patients]);
     }
 
-    setNewPatient({ name: "", phone: "", gender: "Nam", address: "" });
+    setNewPatient({ name: "", phone: "", gender: "Nam", address: "", dob: "", weight: "", height: "", temperature: "37" });
     setShowAddModal(false);
     setEditingPatientId(null);
+    localStorage.removeItem("khambenh_draft_patient");
   };
 
   const handleEditClick = (patient: any) => {
     setEditingPatientId(patient.id);
-    setNewPatient({ name: patient.name, phone: patient.phone, gender: patient.gender, address: patient.address });
+    setNewPatient({ 
+      name: patient.name || "", 
+      phone: patient.phone || "", 
+      gender: patient.gender || "Nam", 
+      address: patient.address || "",
+      dob: patient.dob || "",
+      weight: patient.weight || "",
+      height: patient.height || "",
+      temperature: patient.temperature || "37"
+    });
     setShowAddModal(true);
   };
 
@@ -75,6 +128,13 @@ export default function PatientsPage() {
       localStorage.setItem("khambenh_patients", JSON.stringify(patients));
     }
   }, [patients, isLoaded]);
+
+  // Auto-save draft khi đang nhập bệnh nhân mới
+  useEffect(() => {
+    if (showAddModal && !editingPatientId && isLoaded) {
+      localStorage.setItem("khambenh_draft_patient", JSON.stringify(newPatient));
+    }
+  }, [newPatient, showAddModal, editingPatientId, isLoaded]);
 
   // Remove Vietnamese accents for better searching
   const removeAccents = (str: string) => {
@@ -109,7 +169,12 @@ export default function PatientsPage() {
         <button
           onClick={() => {
             setEditingPatientId(null);
-            setNewPatient({ name: "", phone: "", gender: "Nam", address: "" });
+            const draft = localStorage.getItem("khambenh_draft_patient");
+            if (draft) {
+              try { setNewPatient(JSON.parse(draft)); } catch { setNewPatient({ name: "", phone: "", gender: "Nam", address: "", dob: "", weight: "", height: "", temperature: "37" }); }
+            } else {
+              setNewPatient({ name: "", phone: "", gender: "Nam", address: "", dob: "", weight: "", height: "", temperature: "37" });
+            }
             setShowAddModal(true);
           }}
           className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors font-medium shadow-sm shadow-blue-500/20"
@@ -209,28 +274,18 @@ export default function PatientsPage() {
               {editingPatientId ? "Chỉnh Sửa Thông Tin" : "Thêm Bệnh Nhân Mới"}
             </h3>
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Họ và tên</label>
-                <input
-                  type="text"
-                  value={newPatient.name}
-                  onChange={(e) => setNewPatient({ ...newPatient, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-900"
-                  placeholder="Nhập họ và tên..."
-                />
-              </div>
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Số điện thoại</label>
+                <div className="col-span-2 sm:col-span-1">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Họ và tên</label>
                   <input
                     type="text"
-                    value={newPatient.phone}
-                    onChange={(e) => setNewPatient({ ...newPatient, phone: e.target.value })}
+                    value={newPatient.name}
+                    onChange={(e) => setNewPatient({ ...newPatient, name: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-900"
-                    placeholder="Nhập số điện thoại..."
+                    placeholder="Nhập họ và tên..."
                   />
                 </div>
-                <div>
+                <div className="col-span-2 sm:col-span-1">
                   <label className="block text-sm font-medium text-slate-700 mb-1">Giới tính</label>
                   <select
                     value={newPatient.gender}
@@ -241,16 +296,96 @@ export default function PatientsPage() {
                     <option value="Nữ">Nữ</option>
                   </select>
                 </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Địa chỉ</label>
-                <input
-                  type="text"
-                  value={newPatient.address}
-                  onChange={(e) => setNewPatient({ ...newPatient, address: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-900"
-                  placeholder="Nhập địa chỉ..."
-                />
+
+                <div className="col-span-2">
+                  <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                    <div className="flex-1 w-full">
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Ngày tháng năm sinh</label>
+                      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+                        <input
+                          type="date"
+                          value={newPatient.dob}
+                          onChange={(e) => setNewPatient({ ...newPatient, dob: e.target.value })}
+                          className="w-full sm:w-auto flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-900"
+                        />
+                        {newPatient.dob && calculateAge(newPatient.dob) && (
+                          <span className="text-sm font-medium text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100 whitespace-nowrap">
+                            {calculateAge(newPatient.dob)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="w-full sm:w-28 shrink-0">
+                      <label className="block text-sm font-medium text-slate-700 mb-1">NĐ (°C)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={newPatient.temperature}
+                        onChange={(e) => setNewPatient({ ...newPatient, temperature: e.target.value })}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-900 text-center"
+                        placeholder="37"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="col-span-2 sm:col-span-1">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Cân nặng (Kg)</label>
+                  <input
+                    type="number"
+                    value={newPatient.weight}
+                    onChange={(e) => setNewPatient({ ...newPatient, weight: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-900"
+                    placeholder="Ví dụ: 15"
+                  />
+                </div>
+                <div className="col-span-2 sm:col-span-1">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Chiều cao (cm)</label>
+                  <input
+                    type="number"
+                    value={newPatient.height}
+                    onChange={(e) => setNewPatient({ ...newPatient, height: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-900"
+                    placeholder="Ví dụ: 100"
+                  />
+                </div>
+
+                {(() => {
+                  const bmiVal = calculateBMI(newPatient.weight, newPatient.height);
+                  if (!bmiVal) return null;
+                  const desc = getBMIDescription(bmiVal);
+                  if (!desc) return null;
+                  const Icon = desc.icon;
+                  return (
+                    <div className="col-span-2">
+                      <div className={`text-sm font-medium px-3 py-2 rounded-lg border inline-flex items-center gap-2 self-start ${desc.color}`}>
+                        <Icon className="w-5 h-5" />
+                        <span><span className="font-bold">BMI:</span> {bmiVal} - {desc.text}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                <div className="col-span-2 sm:col-span-1">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Số điện thoại</label>
+                  <input
+                    type="text"
+                    value={newPatient.phone}
+                    onChange={(e) => setNewPatient({ ...newPatient, phone: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-900"
+                    placeholder="Nhập số điện thoại..."
+                  />
+                </div>
+                <div className="col-span-2 sm:col-span-1">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Địa chỉ</label>
+                  <input
+                    type="text"
+                    value={newPatient.address}
+                    onChange={(e) => setNewPatient({ ...newPatient, address: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-900"
+                    placeholder="Nhập địa chỉ..."
+                  />
+                </div>
               </div>
               <div className="flex justify-end gap-3 mt-6">
                 <button onClick={() => { setShowAddModal(false); setEditingPatientId(null); }} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors">Hủy</button>

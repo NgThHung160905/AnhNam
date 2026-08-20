@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Plus, Search, FileText, Edit2, Trash2, X, ClipboardList, Stethoscope, Pill } from "lucide-react";
 
-const EMPTY_MED_LINE = { medicineName: "", medicineQuantity: 1 };
+const EMPTY_MED_LINE = { medicineName: "", medicineQuantity: 1, medDays: "", medTimes: "", medAmount: "", medicineNote: "", medCustomUnit: "viên" };
 
 const DUMMY_DIAGNOSIS = [
   {
@@ -51,7 +51,7 @@ export default function DiagnosisPage() {
     return dateStr;
   };
 
-  const [newDiag, setNewDiag] = useState<any>({ patientName: "", doctorName: "", diagnosis: "", date: getCurrentFormattedDate(), followUpDate: "", serviceName: "", serviceFee: "", notes: "", medicines: [{ ...EMPTY_MED_LINE }] });
+  const [newDiag, setNewDiag] = useState<any>({ patientName: "", doctorName: "", diagnosis: "", date: getCurrentFormattedDate(), followUpDate: "", serviceName: "", serviceFee: 80000, notes: "", medicines: [{ ...EMPTY_MED_LINE }] });
   const [editingDiagId, setEditingDiagId] = useState<number | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [viewingPrescription, setViewingPrescription] = useState<any>(null);
@@ -61,6 +61,41 @@ export default function DiagnosisPage() {
     { id: "T003", name: "Vitamin C 1000mg", type: "Vitamin", company: "Traphaco", price: "20,000", unit: "Hộp", stock: 50 },
   ]);
   const [availableDoctors, setAvailableDoctors] = useState<any[]>(DUMMY_DOCTORS);
+  const [savedPatients, setSavedPatients] = useState<any[]>([]);
+
+  const calculateAge = (dob: string) => {
+    if (!dob) return "";
+    const birthDate = new Date(dob);
+    const today = new Date();
+    if (isNaN(birthDate.getTime())) return "";
+
+    let months = (today.getFullYear() - birthDate.getFullYear()) * 12;
+    months -= birthDate.getMonth();
+    months += today.getMonth();
+
+    if (today.getDate() < birthDate.getDate()) {
+      months--;
+    }
+
+    if (months < 0) return "Chưa sinh";
+    if (months === 0) return "Dưới 1 tháng tuổi";
+
+    const years = Math.floor(months / 12);
+    const remainingMonths = months % 12;
+
+    if (years === 0) return `${months} tháng tuổi`;
+    if (remainingMonths === 0) return `${months} tháng (${years} tuổi)`;
+    return `${months} tháng (${years} tuổi ${remainingMonths} tháng)`;
+  };
+
+  const calculateBMI = (weight: string, height: string) => {
+    const w = parseFloat(weight);
+    const h = parseFloat(height) / 100;
+    if (w > 0 && h > 0) {
+      return (w / (h * h)).toFixed(1);
+    }
+    return "";
+  };
 
   const getPrescriptionDetails = (diag: any) => {
     const meds: any[] = diag.medicines || [];
@@ -68,7 +103,7 @@ export default function DiagnosisPage() {
       return meds.filter((m: any) => m.medicineName).map((m: any, idx: number) => {
         const medInfo = availableMedicines.find((med: any) => med.name === m.medicineName) || { unit: "Vien", price: "5000" };
         const priceNum = parseInt((medInfo.price || "5000").toString().replace(/[^0-9]/g, "")) || 5000;
-        return { id: idx + 1, name: m.medicineName, quantity: m.medicineQuantity || 1, unit: medInfo.unit || "Vien", price: priceNum, notes: "Theo chi dinh bac si" };
+        return { id: idx + 1, name: m.medicineName, quantity: m.medicineQuantity || 1, unit: m.medicineUnit ?? medInfo?.unit ?? (m.medicineName ? "Viên" : ""), price: priceNum, medDays: m.medDays || "", medTimes: m.medTimes || "", medAmount: m.medAmount || "", medCustomUnit: m.medCustomUnit ?? "viên", notes: m.medicineNote || "" };
       });
     }
     return [
@@ -197,6 +232,8 @@ export default function DiagnosisPage() {
     if (savedMeds) { try { setAvailableMedicines(JSON.parse(savedMeds)); } catch (e) { } }
     const savedDoctors = localStorage.getItem("khambenh_doctors");
     if (savedDoctors) { try { setAvailableDoctors(JSON.parse(savedDoctors)); } catch (e) { } }
+    const savedPts = localStorage.getItem("khambenh_patients");
+    if (savedPts) { try { setSavedPatients(JSON.parse(savedPts)); } catch (e) { } }
     setIsLoaded(true);
   }, []);
 
@@ -204,11 +241,18 @@ export default function DiagnosisPage() {
     if (isLoaded) localStorage.setItem("khambenh_diagnosis", JSON.stringify(diagnoses));
   }, [diagnoses, isLoaded]);
 
-  const resetNewDiag = () => ({ patientName: "", doctorName: "", diagnosis: "", date: getCurrentFormattedDate(), followUpDate: "", serviceName: "", serviceFee: "", notes: "", medicines: [{ ...EMPTY_MED_LINE }] });
+  // Auto-save draft khi đang nhập phiếu mới
+  useEffect(() => {
+    if (showAddModal && !editingDiagId && isLoaded) {
+      localStorage.setItem("khambenh_draft_diag", JSON.stringify(newDiag));
+    }
+  }, [newDiag, showAddModal, editingDiagId, isLoaded]);
+
+  const resetNewDiag = () => ({ patientName: "", patientId: "", doctorName: "", diagnosis: "", date: getCurrentFormattedDate(), followUpDate: "", serviceName: "", serviceFee: 80000, notes: "", medicines: [{ ...EMPTY_MED_LINE }] });
 
   const handleSaveDiag = () => {
-    if (!newDiag.patientName.trim() || !newDiag.doctorName.trim() || !newDiag.diagnosis.trim()) {
-      alert("Vui long nhap Ten benh nhan, Bac si va Chuan doan!");
+    if (!newDiag.patientName.trim() || !newDiag.diagnosis.trim()) {
+      alert("Vui lòng chọn Bệnh nhân và nhập Chẩn đoán!");
       return;
     }
 
@@ -242,33 +286,42 @@ export default function DiagnosisPage() {
     if (editingDiagId !== null) {
       const oldDiag = diagnoses.find(d => d.id === editingDiagId);
 
-      // Revert old stock
+      // Revert old stock (ch? hoàn lại nếu đơn vị khớp)
       if (oldDiag && oldDiag.medicines) {
         oldDiag.medicines.forEach((oldMed: any) => {
           if (oldMed.medicineName && oldMed.medicineQuantity > 0) {
             const medIndex = updatedMeds.findIndex((m: any) => m.name === oldMed.medicineName);
             if (medIndex !== -1) {
-              updatedMeds[medIndex] = {
-                ...updatedMeds[medIndex],
-                stock: (updatedMeds[medIndex].stock !== undefined ? updatedMeds[medIndex].stock : 100) + oldMed.medicineQuantity
-              };
-              medsChanged = true;
+              const inventoryUnit = updatedMeds[medIndex].unit || "";
+              const prescriptionUnit = oldMed.medicineUnit ?? inventoryUnit;
+              // Ch? hoàn lại kho khi đơn vị khớp
+              if (!prescriptionUnit || prescriptionUnit === inventoryUnit) {
+                updatedMeds[medIndex] = {
+                  ...updatedMeds[medIndex],
+                  stock: (updatedMeds[medIndex].stock !== undefined ? updatedMeds[medIndex].stock : 100) + oldMed.medicineQuantity
+                };
+                medsChanged = true;
+              }
             }
           }
         });
       }
 
-      // Deduct new stock
+      // Deduct new stock (ch? trừ khi đơn vị khớp)
       if (newDiag.medicines) {
         newDiag.medicines.forEach((med: any) => {
           if (med.medicineName && med.medicineQuantity > 0) {
             const medIndex = updatedMeds.findIndex((m: any) => m.name === med.medicineName);
             if (medIndex !== -1) {
-              updatedMeds[medIndex] = {
-                ...updatedMeds[medIndex],
-                stock: Math.max(0, (updatedMeds[medIndex].stock !== undefined ? updatedMeds[medIndex].stock : 100) - med.medicineQuantity)
-              };
-              medsChanged = true;
+              const inventoryUnit = updatedMeds[medIndex].unit || "";
+              const prescriptionUnit = med.medicineUnit ?? inventoryUnit;
+              if (!prescriptionUnit || prescriptionUnit === inventoryUnit) {
+                updatedMeds[medIndex] = {
+                  ...updatedMeds[medIndex],
+                  stock: Math.max(0, (updatedMeds[medIndex].stock !== undefined ? updatedMeds[medIndex].stock : 100) - med.medicineQuantity)
+                };
+                medsChanged = true;
+              }
             }
           }
         });
@@ -279,17 +332,21 @@ export default function DiagnosisPage() {
       const nextId = diagnoses.length > 0 ? Math.max(...diagnoses.map(d => d.id)) + 1 : 1;
       setDiagnoses([{ id: nextId, ...newDiag }, ...diagnoses]);
 
-      // Deduct new stock
+      // Deduct new stock (ch? trừ khi đơn vị khớp)
       if (newDiag.medicines) {
         newDiag.medicines.forEach((med: any) => {
           if (med.medicineName && med.medicineQuantity > 0) {
             const medIndex = updatedMeds.findIndex((m: any) => m.name === med.medicineName);
             if (medIndex !== -1) {
-              updatedMeds[medIndex] = {
-                ...updatedMeds[medIndex],
-                stock: Math.max(0, (updatedMeds[medIndex].stock !== undefined ? updatedMeds[medIndex].stock : 100) - med.medicineQuantity)
-              };
-              medsChanged = true;
+              const inventoryUnit = updatedMeds[medIndex].unit || "";
+              const prescriptionUnit = med.medicineUnit ?? inventoryUnit;
+              if (!prescriptionUnit || prescriptionUnit === inventoryUnit) {
+                updatedMeds[medIndex] = {
+                  ...updatedMeds[medIndex],
+                  stock: Math.max(0, (updatedMeds[medIndex].stock !== undefined ? updatedMeds[medIndex].stock : 100) - med.medicineQuantity)
+                };
+                medsChanged = true;
+              }
             }
           }
         });
@@ -305,6 +362,7 @@ export default function DiagnosisPage() {
     setNewDiag(resetNewDiag());
     setShowAddModal(false);
     setEditingDiagId(null);
+    localStorage.removeItem("khambenh_draft_diag");
   };
 
   const handleEditClick = (diag: any) => {
@@ -407,9 +465,7 @@ export default function DiagnosisPage() {
   const paginatedDiagnoses = filteredDiagnoses.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const totalRevenue = filteredDiagnoses.reduce((acc, diag) => {
-    const meds = getPrescriptionDetails(diag);
-    const diagTotal = meds.reduce((sum: number, med: any) => sum + (med.price * med.quantity), 0);
-    return acc + diagTotal + (Number(diag.serviceFee) || 0);
+    return acc + (Number(diag.serviceFee) || 0);
   }, 0);
 
   return (
@@ -424,7 +480,16 @@ export default function DiagnosisPage() {
             <span className="text-sm font-medium mr-2">Tổng Doanh Thu:</span>
             <span className="text-lg font-bold">{totalRevenue.toLocaleString('vi-VN')} ₫</span>
           </div>
-          <button onClick={() => { setEditingDiagId(null); setNewDiag(resetNewDiag()); setShowAddModal(true); }} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors font-medium shadow-sm shadow-purple-500/20">
+          <button onClick={() => {
+            setEditingDiagId(null);
+            const draft = localStorage.getItem("khambenh_draft_diag");
+            if (draft) {
+              try { setNewDiag(JSON.parse(draft)); } catch { setNewDiag(resetNewDiag()); }
+            } else {
+              setNewDiag(resetNewDiag());
+            }
+            setShowAddModal(true);
+          }} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors font-medium shadow-sm shadow-purple-500/20">
             <Plus className="w-4 h-4" /><span>Phiếu khám mới</span>
           </button>
         </div>
@@ -533,39 +598,33 @@ export default function DiagnosisPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Tên Bệnh Nhân</label>
-                    <input type="text" value={newDiag.patientName} onChange={e => setNewDiag({ ...newDiag, patientName: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-slate-900"
-                      placeholder="Nhập tên bệnh nhân..." />
-                  </div>
-                  <div className="relative">
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Bác Sĩ Khám</label>
-                    <input
-                      type="text"
-                      value={newDiag.doctorName}
+                    <select
+                      value={newDiag.patientId || ""}
                       onChange={e => {
-                        setNewDiag({ ...newDiag, doctorName: e.target.value });
-                        setHighlightedDoctorIndex(-1);
+                        const pt = savedPatients.find((p: any) => p.id === e.target.value);
+                        setNewDiag({ ...newDiag, patientId: e.target.value, patientName: pt ? pt.name : "" });
                       }}
-                      onKeyDown={handleDoctorKeyDown}
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-slate-900"
-                      placeholder="Nhập tên bác sĩ..." />
-                    {filteredDoctors.length > 0 && (
-                      <ul className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-40 overflow-auto">
-                        {filteredDoctors.map((doctor, index) => (
-                          <li
-                            key={index}
-                            id={`doctor-suggestion-${index}`}
-                            className={`px-3 py-2 cursor-pointer text-sm text-slate-800 ${highlightedDoctorIndex === index ? 'bg-purple-100' : 'hover:bg-slate-50'}`}
-                            onClick={() => {
-                              setNewDiag({ ...newDiag, doctorName: doctor.name });
-                              setHighlightedDoctorIndex(-1);
-                            }}
-                          >
-                            {doctor.name} - {doctor.specialty}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
+                    >
+                      <option value="">-- Chọn bệnh nhân --</option>
+                      {savedPatients.map((pt: any) => (
+                        <option key={pt.id} value={pt.id}>{pt.name} ({pt.id})</option>
+                      ))}
+                    </select>
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Bác sĩ khám</label>
+                    <select
+                      value={newDiag.doctorName || ""}
+                      onChange={e => setNewDiag({ ...newDiag, doctorName: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-slate-900"
+                    >
+                      <option value="">-- Chọn bác sĩ --</option>
+                      <option value="Võ Tấn Nam">Võ Tấn Nam</option>
+                      <option value="Nguyễn Thị Mỹ Phụng">Nguyễn Thị Mỹ Phụng</option>
+                    </select>
+                  </div>
+
                   <div className="col-span-2">
                     <label className="block text-sm font-medium text-slate-700 mb-1">Ch&#7849;n &#273;o&#225;n</label>
                     <input type="text" value={newDiag.diagnosis} onChange={e => setNewDiag({ ...newDiag, diagnosis: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-slate-900"
@@ -605,13 +664,9 @@ export default function DiagnosisPage() {
                   </h4>
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Tên Dịch Vụ</label>
-                      <input type="text" value={newDiag.serviceName} onChange={e => setNewDiag({ ...newDiag, serviceName: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-900" placeholder="VD: Khám tổng quát" />
-                    </div>
-                    <div>
                       <label className="block text-sm font-medium text-slate-700 mb-1">Tiền Dịch Vụ</label>
                       <input type="number" value={newDiag.serviceFee} onChange={e => setNewDiag({ ...newDiag, serviceFee: Number(e.target.value) })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-900" min="0"
-                        placeholder="Số tiền..." />
+                        placeholder="80000" />
                     </div>
                   </div>
                 </div>
@@ -632,8 +687,9 @@ export default function DiagnosisPage() {
                       <thead className="bg-slate-50 text-slate-600 border-b border-slate-200">
                         <tr>
                           <th className="px-3 py-2 font-medium text-left">T&#234;n thu&#7889;c</th>
-                          <th className="px-3 py-2 font-medium text-center w-20">SL</th>
-                          <th className="px-3 py-2 font-medium text-center w-16">&#272;V</th>
+                          <th className="px-3 py-2 font-medium text-center w-12">SL</th>
+                          <th className="px-3 py-2 font-medium text-center w-10">&#272;V</th>
+                          <th className="px-3 py-2 font-medium text-left min-w-[280px]">Cách dùng</th>
                           <th className="w-8"></th>
                         </tr>
                       </thead>
@@ -651,7 +707,20 @@ export default function DiagnosisPage() {
                               <td className="px-1 py-1.5">
                                 <input type="number" min="1" value={med.medicineQuantity} onChange={e => updateMedLine(idx, "medicineQuantity", parseInt(e.target.value) || 1)} className="w-full px-1 py-1 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-slate-900 text-xs text-center" />
                               </td>
-                              <td className="px-1 py-1.5 text-center text-slate-500 text-[11px]">{medInfo?.unit || (med.medicineName ? "Vien" : "-")}</td>
+                              <td className="px-1 py-1.5">
+                                <input type="text" value={med.medicineUnit ?? medInfo?.unit ?? (med.medicineName ? "Viên" : "")} onChange={e => updateMedLine(idx, "medicineUnit", e.target.value)} className="w-full px-1 py-1 border border-slate-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-purple-500 text-slate-900 font-medium bg-white text-[11px]" placeholder="ĐV" />
+                              </td>
+                              <td className="px-1 py-1.5">
+                                <div className="flex flex-col gap-1.5">
+                                  <div className="flex items-center gap-1 text-[11px] text-slate-700 whitespace-nowrap">
+                                    Uống <input type="text" value={med.medDays || ""} onChange={e => updateMedLine(idx, "medDays", e.target.value)} className="w-8 px-1 py-1 border border-slate-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-purple-500 text-slate-900 font-medium bg-white" /> ngày,
+                                    mỗi ngày <input type="text" value={med.medTimes || ""} onChange={e => updateMedLine(idx, "medTimes", e.target.value)} className="w-8 px-1 py-1 border border-slate-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-purple-500 text-slate-900 font-medium bg-white" /> lần,
+                                    mỗi lần <input type="text" value={med.medAmount || ""} onChange={e => updateMedLine(idx, "medAmount", e.target.value)} className="w-8 px-1 py-1 border border-slate-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-purple-500 text-slate-900 font-medium bg-white" />
+                                    <input type="text" value={med.medCustomUnit ?? "viên"} onChange={e => updateMedLine(idx, "medCustomUnit", e.target.value)} className="w-10 px-1 py-1 border border-slate-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-purple-500 text-slate-900 font-medium bg-white" />
+                                  </div>
+                                  <input type="text" value={med.medicineNote || ""} onChange={e => updateMedLine(idx, "medicineNote", e.target.value)} className="w-full px-2 py-1 border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-purple-500 text-xs text-slate-900 bg-white placeholder:text-slate-400" placeholder="Ghi chú thêm (VD: Uống sau khi ăn...)" />
+                                </div>
+                              </td>
                               <td className="px-1 py-1.5 text-center">
                                 <button onClick={() => removeMedLine(idx)} disabled={newDiag.medicines.length === 1} className="p-1 text-slate-400 hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
                                   <X className="w-3.5 h-3.5" />
@@ -686,99 +755,132 @@ export default function DiagnosisPage() {
       {viewingPrescription && (
         <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50 p-4" onClick={() => setViewingPrescription(null)}>
           <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center p-6 border-b border-slate-200">
-              <div>
-                <h3 className="text-lg font-bold text-slate-800">Chi ti&#7871;t kh&#225;m b&#7879;nh #{viewingPrescription.id}</h3>
-                <div className="flex items-center gap-4 mt-0.5">
-                  <p className="text-sm text-slate-500">Khám ngày: {formatDateDisplay(viewingPrescription.date)}</p>
-                  {viewingPrescription.followUpDate && (
-                    <p className="text-sm font-medium text-purple-600 bg-purple-50 px-2 py-0.5 rounded border border-purple-100">
-                      Tái khám: {viewingPrescription.followUpDate}
-                    </p>
-                  )}
-                </div>
-              </div>
-              <button onClick={() => setViewingPrescription(null)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+            <div className="p-8 bg-white text-slate-800 relative rounded-xl">
+              {/* Nút đóng */}
+              <button onClick={() => setViewingPrescription(null)} className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors print:hidden">
                 <X className="w-5 h-5" />
               </button>
-            </div>
-            <div className="p-6 bg-slate-50 border-b border-slate-200">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div className="flex flex-col gap-1">
-                  <span className="text-slate-500 text-xs uppercase tracking-wide font-medium">B&#7879;nh nh&#226;n</span>
-                  <span className="font-semibold text-slate-800">{viewingPrescription.patientName}</span>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <span className="text-slate-500 text-xs uppercase tracking-wide font-medium">B&#225;c s&#297; k&#234; toa</span>
-                  <span className="font-semibold text-slate-800">{viewingPrescription.doctorName}</span>
-                </div>
-                <div className="flex flex-col gap-1 col-span-2">
-                  <span className="text-slate-500 text-xs uppercase tracking-wide font-medium">Ch&#7849;n &#273;o&#225;n</span>
-                  <span className="font-semibold text-slate-800">{viewingPrescription.diagnosis}</span>
-                </div>
+
+              {/* Header Đơn Thuốc */}
+              <div className="text-center mb-8 mt-4">
+                <h2 className="text-3xl font-bold uppercase tracking-wider mb-2">Đơn Thuốc</h2>
+                <p className="text-sm text-slate-600">
+                  Mã đơn: <span className="font-medium">{viewingPrescription.id}</span> -
+                  Ngày khám: <span className="font-medium">{formatDateDisplay(viewingPrescription.date)}</span>
+                </p>
+                {viewingPrescription.doctorName && (
+                  <p className="text-lg text-slate-800 mt-2 font-medium">
+                    Bác sĩ: <span className="font-bold text-green-700 text-xl">{viewingPrescription.doctorName}</span>
+                  </p>
+                )}
               </div>
-            </div>
-            <div className="p-6">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-200 text-slate-500 text-xs uppercase tracking-wide">
-                    <th className="pb-3 text-left font-medium">T&#234;n thu&#7889;c</th>
-                    <th className="pb-3 text-center font-medium w-20">SL</th>
-                    <th className="pb-3 text-center font-medium w-20">&#272;&#417;n v&#7883;</th>
-                    <th className="pb-3 text-right font-medium w-28">&#272;&#417;n gi&#225;</th>
-                    <th className="pb-3 text-right font-medium w-28">Th&#224;nh ti&#7873;n</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {getPrescriptionDetails(viewingPrescription).map((item: any, idx: number) => (
-                    <tr key={idx}>
-                      <td className="py-3 font-medium text-slate-800">{item.name}</td>
-                      <td className="py-3 text-center text-slate-600">{item.quantity}</td>
-                      <td className="py-3 text-center text-slate-500">{item.unit}</td>
-                      <td className="py-3 text-right text-slate-600">{item.price.toLocaleString("vi-VN")} &#8363;</td>
-                      <td className="py-3 text-right font-semibold text-slate-800">{(item.price * item.quantity).toLocaleString("vi-VN")} &#8363;</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <div className="border-t-2 border-slate-200 mt-4 pt-4">
-                <div className="flex justify-between items-center text-sm text-slate-600 mb-3 px-2">
-                  <span className="font-medium">Ti&#7873;n d&#7883;ch v&#7909; ({viewingPrescription.serviceName || "Khám bệnh"}):</span>
-                  <span>{(Number(viewingPrescription.serviceFee) || 0).toLocaleString("vi-VN")} &#8363;</span>
-                </div>
-                <div className="flex justify-end border-t border-slate-100 pt-3">
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-purple-600">
-                      Tổng cộng : {(getPrescriptionDetails(viewingPrescription).reduce((t: number, i: any) => t + i.price * i.quantity, 0) + (Number(viewingPrescription.serviceFee) || 0)).toLocaleString("vi-VN")}đ
+
+              {/* Thông tin bệnh nhân */}
+              {(() => {
+                const pt = savedPatients.find((p: any) => viewingPrescription.patientId ? p.id === viewingPrescription.patientId : p.name === viewingPrescription.patientName) || {};
+                return (
+                  <div className="space-y-4 mb-8 text-base">
+                    <div className="flex gap-2 items-end">
+                      <span className="font-semibold whitespace-nowrap">Họ tên:</span>
+                      <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2">{viewingPrescription.patientName}</span>
+                    </div>
+                    <div className="flex gap-6 items-end">
+                      <div className="flex gap-2 items-end flex-1">
+                        <span className="font-semibold whitespace-nowrap">Ngày sinh:</span>
+                        <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2">
+                          {(pt as any).dob ? `${new Date((pt as any).dob).toLocaleDateString('vi-VN')} (${calculateAge((pt as any).dob)})` : ""}
+                        </span>
+                      </div>
+                      <div className="flex gap-2 items-end w-48">
+                        <span className="font-semibold whitespace-nowrap">Giới tính:</span>
+                        <span className="flex-1 border-b-2 border-dotted border-slate-300 flex items-center justify-around pb-1 text-sm">
+                          <label className="flex items-center gap-1"><input type="checkbox" className="w-3 h-3" readOnly checked={(pt as any).gender === "Nam"} /> Nam</label>
+                          <label className="flex items-center gap-1"><input type="checkbox" className="w-3 h-3" readOnly checked={(pt as any).gender === "Nữ"} /> Nữ</label>
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex gap-4 items-end flex-wrap">
+                      <div className="flex gap-2 items-end">
+                        <span className="font-semibold whitespace-nowrap">Cân nặng:</span>
+                        <span className="border-b-2 border-dotted border-slate-300 px-2 min-w-[50px]">{(pt as any).weight ? `${(pt as any).weight} kg` : ""}</span>
+                      </div>
+                      <div className="flex gap-2 items-end">
+                        <span className="font-semibold whitespace-nowrap">Chiều cao:</span>
+                        <span className="border-b-2 border-dotted border-slate-300 px-2 min-w-[50px]">{(pt as any).height ? `${(pt as any).height} cm` : ""}</span>
+                      </div>
+                      <div className="flex gap-2 items-end">
+                        <span className="font-semibold whitespace-nowrap">BMI:</span>
+                        <span className="border-b-2 border-dotted border-slate-300 px-2 min-w-[40px]">{(pt as any).weight && (pt as any).height ? calculateBMI((pt as any).weight, (pt as any).height) : ""}</span>
+                      </div>
+                      <div className="flex gap-2 items-end">
+                        <span className="font-semibold whitespace-nowrap">NĐ:</span>
+                        <span className="border-b-2 border-dotted border-slate-300 px-2 min-w-[40px]">{(pt as any).temperature ? `${(pt as any).temperature} °C` : ""}</span>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 items-end">
+                      <span className="font-semibold whitespace-nowrap">Địa chỉ:</span>
+                      <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2">{(pt as any).address || ""}</span>
                     </div>
                   </div>
+                );
+              })()}
+
+              <div className="flex gap-2 items-end mb-6">
+                <span className="font-semibold whitespace-nowrap">Chẩn đoán:</span>
+                <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2 font-medium">{viewingPrescription.diagnosis}</span>
+              </div>
+
+              {/* Danh sách thuốc */}
+              <div className="mb-10 min-h-[200px]">
+                <h3 className="font-bold text-lg mb-4">Thuốc điều trị:</h3>
+                <div className="space-y-6">
+                  {getPrescriptionDetails(viewingPrescription).map((item: any, idx: number) => (
+                    <div key={idx} className="text-base">
+                      <div className="font-bold mb-2">
+                        {idx + 1}/ {item.name}
+                      </div>
+                      <div className="pl-6 text-slate-700 flex flex-wrap gap-y-2 items-end">
+                        {item.notes && <span className="w-full text-slate-600 italic mb-1">- Ghi chú: {item.notes}</span>}
+                        <span className="whitespace-nowrap">- Số lượng:</span>
+                        <span className="border-b-2 border-dotted border-slate-300 min-w-[60px] text-center inline-block font-medium px-2">{item.quantity}</span>
+                        <span className="mr-6">{item.unit}</span>
+
+                        <span className="whitespace-nowrap">Uống {item.medDays || "...."} ngày, mỗi ngày {item.medTimes || "...."} lần, mỗi lần {item.medAmount || "...."} {item.medCustomUnit}.</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
-              {viewingPrescription.notes && (
-                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <p className="text-sm font-semibold text-yellow-800 mb-1">Lưu Ý:</p>
-                  <p className="text-sm text-slate-700 whitespace-pre-wrap">{viewingPrescription.notes}</p>
+              {/* Tiền dịch vụ & Ghi chú */}
+              <div className="space-y-4 mb-10 text-base">
+                <div className="flex gap-2 items-end">
+                  <span className="font-bold whitespace-nowrap">Tiền dịch vụ:</span>
+                  <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2 font-bold text-lg">
+                    {(Number(viewingPrescription.serviceFee) || 80000).toLocaleString("vi-VN")} &#8363;
+                  </span>
                 </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-8 mt-10 pt-4">
-                <div className="flex flex-col items-center gap-2">
-                  <span className="text-sm font-semibold text-slate-700">Ch&#7919; k&#253; B&#225;c s&#297;</span>
-                  <div className="w-full h-20 border-b-2 border-slate-300 border-dashed"></div>
-                  <span className="text-sm text-slate-500 italic">{viewingPrescription.doctorName}</span>
+                <div className="flex gap-2 items-end">
+                  <span className="font-bold whitespace-nowrap">Ghi chú:</span>
+                  <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2">{viewingPrescription.notes}</span>
                 </div>
-                <div className="flex flex-col items-center gap-2">
-                  <span className="text-sm font-semibold text-slate-700">Ch&#7919; k&#253; B&#7879;nh nh&#226;n</span>
-                  <div className="w-full h-20 border-b-2 border-slate-300 border-dashed"></div>
-                  <span className="text-sm text-slate-500 italic">{viewingPrescription.patientName}</span>
+                <div className="flex gap-2 items-end uppercase">
+                  <span className="font-bold whitespace-nowrap">Tái khám:</span>
+                  <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2">{viewingPrescription.followUpDate}</span>
                 </div>
               </div>
+              {/* Các nút hành động (ẩn khi in) */}
+              <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-200 print:hidden">
+                <button onClick={() => window.print()} className="px-6 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors shadow-sm flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                  In Đơn Thuốc
+                </button>
+                <button onClick={() => setViewingPrescription(null)} className="px-6 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors border border-slate-300">
+                  &#272;&#243;ng
+                </button>
+              </div>
             </div>
-            <div className="flex justify-end gap-3 p-6 border-t border-slate-200 bg-slate-50 rounded-b-xl">
-              <button onClick={() => setViewingPrescription(null)} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg font-medium transition-colors border border-slate-300">&#272;&#243;ng</button>
-              <button onClick={() => window.print()} className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors shadow-sm">In H&#243;a &#272;&#417;n</button>
-            </div>
+
           </div>
         </div>
       )}</div>
