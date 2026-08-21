@@ -79,10 +79,46 @@ export default function Header({ onMenuClick }: HeaderProps) {
                       if (item && item.id !== undefined) existingMap.set(item.id, item);
                     });
 
+                    // Helper to check if two items are same (ignoring id)
+                    const isSameContent = (obj1: any, obj2: any) => {
+                      const o1 = { ...obj1 };
+                      const o2 = { ...obj2 };
+                      delete o1.id;
+                      delete o2.id;
+                      return JSON.stringify(o1) === JSON.stringify(o2);
+                    };
+
+                    const existingArray = Array.from(existingMap.values());
+
                     importedObj.forEach(item => {
                       if (item && item.id !== undefined) {
-                        if (!existingMap.has(item.id)) {
-                          existingMap.set(item.id, item); // Chỉ thêm mới nếu chưa có, không ghi đè dữ liệu cũ
+                        // Check if exact same content already exists
+                        const isDup = existingArray.some(ex => isSameContent(ex, item));
+                        
+                        if (!isDup) {
+                          // Content is new. Check if ID clashes
+                          if (existingMap.has(item.id)) {
+                            // Clash! Generate new ID based on key
+                            const currentItems = Array.from(existingMap.values());
+                            let newId = item.id;
+                            
+                            if (key === "khambenh_patients") {
+                              const max = Math.max(0, ...currentItems.map(p => parseInt(String(p.id).replace('BN', '')) || 0));
+                              newId = `BN${String(max + 1).padStart(3, '0')}`;
+                            } else if (key === "khambenh_medicines") {
+                              const max = Math.max(0, ...currentItems.map(m => parseInt(String(m.id).replace('T', '')) || 0));
+                              newId = `T${String(max + 1).padStart(3, '0')}`;
+                            } else if (key === "khambenh_diagnosis") {
+                              const max = Math.max(0, ...currentItems.map(d => parseInt(String(d.id)) || 0));
+                              newId = max + 1;
+                            } else {
+                              newId = Date.now();
+                            }
+                            item.id = newId;
+                          }
+                          
+                          existingMap.set(item.id, item);
+                          existingArray.push(item);
                         }
                       }
                     });
