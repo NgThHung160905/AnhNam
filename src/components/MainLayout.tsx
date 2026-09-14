@@ -14,9 +14,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    if (!loading && !user && pathname !== "/login") {
-      router.push("/login");
-    }
+    // Không redirect tới login vì đây là app offline, user luôn có sẵn
   }, [user, loading, router, pathname]);
 
   if (loading) {

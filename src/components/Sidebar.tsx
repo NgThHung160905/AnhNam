@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Users, Stethoscope, Pill, ClipboardList } from "lucide-react";
+import { Users, Stethoscope, Pill, ClipboardList, BarChart3 } from "lucide-react";
 
 const navItems = [
   { name: "Bệnh Nhân", href: "/patients", icon: Users },
   { name: "Thuốc", href: "/medicines", icon: Pill },
   { name: "Khám & Kê toa", href: "/diagnosis", icon: ClipboardList },
+  { name: "Tổng kết", href: "/summary", icon: BarChart3 },
 ];
 
 interface SidebarProps {

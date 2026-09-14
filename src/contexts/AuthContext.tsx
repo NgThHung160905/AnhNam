@@ -1,11 +1,16 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { onAuthStateChanged, User } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+// Bỏ qua import Firebase auth vì dùng offline
+// import { onAuthStateChanged, User } from "firebase/auth";
+// import { auth } from "@/lib/firebase";
+
+interface OfflineUser {
+  email: string | null;
+}
 
 interface AuthContextType {
-  user: User | null;
+  user: OfflineUser | null;
   loading: boolean;
 }
 
@@ -17,16 +22,22 @@ const AuthContext = createContext<AuthContextType>({
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<OfflineUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setLoading(false);
-    });
+    // Chế độ Offline: Tự động cấp tài khoản nội bộ mà không cần Firebase
+    const offlineUser = {
+      email: "Doctor Strange"
+    };
 
-    return () => unsubscribe();
+    // Giả lập thời gian load một chút cho mượt
+    const timer = setTimeout(() => {
+      setUser(offlineUser);
+      setLoading(false);
+    }, 500);
+
+    return () => clearTimeout(timer);
   }, []);
 
   return (

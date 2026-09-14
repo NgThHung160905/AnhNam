@@ -1,12 +1,15 @@
 {
   "name": "khambenh-next",
   "version": "0.1.0",
+  "author": "th_Hung_Entertainment.inc",
   "private": true,
+  "main": "main.js",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "build:app": "next build && electron-builder --dir"
   },
   "dependencies": {
     "firebase": "^12.17.1",
@@ -20,9 +23,21 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "electron": "^43.4.1",
+    "electron-builder": "^26.15.3",
     "eslint": "^9",
     "eslint-config-next": "16.3.0",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "build": {
+    "appId": "com.anhnam.khambenh",
+    "productName": "Hospital_Building_Offver.01",
+    "win": {
+      "icon": "build/icon.ico"
+    },
+    "directories": {
+      "output": "build-dist"
+    }
   }
 }

@@ -1,9 +1,7 @@
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
-import { auth } from "@/lib/firebase";
-import { signOut } from "firebase/auth";
-import { LogOut, User as UserIcon, Menu, Download, Upload } from "lucide-react";
+import { UserIcon, Menu, Download, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface HeaderProps {
@@ -14,16 +12,9 @@ export default function Header({ onMenuClick }: HeaderProps) {
   const { user } = useAuth();
   const router = useRouter();
 
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      router.push("/login");
-    } catch (error) {
-      console.error("Lỗi đăng xuất:", error);
-    }
-  };
 
-  const handleExport = () => {
+
+  const handleExport = async () => {
     const data: Record<string, string | null> = {};
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
@@ -31,16 +22,29 @@ export default function Header({ onMenuClick }: HeaderProps) {
         data[key] = localStorage.getItem(key);
       }
     }
-    const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
     
     const now = new Date();
     const dateStr = `${now.getDate().toString().padStart(2, '0')}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getFullYear()}`;
     const timeStr = `${now.getHours().toString().padStart(2, '0')}h${now.getMinutes().toString().padStart(2, '0')}m`;
+    const filename = `${dateStr} (${timeStr}).sav`;
+    const dataStr = JSON.stringify(data);
+
+    if (typeof window !== "undefined" && (window as any).electronAPI) {
+      const res = await (window as any).electronAPI.saveData(dataStr, filename);
+      if (res.success) {
+        alert("Đã xuất dữ liệu thành công vào:\n" + res.path);
+      } else {
+        alert("Lỗi khi lưu file: " + res.error);
+      }
+      return;
+    }
+
+    const blob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
     
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${dateStr} (${timeStr}).sav`;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -79,47 +83,10 @@ export default function Header({ onMenuClick }: HeaderProps) {
                       if (item && item.id !== undefined) existingMap.set(item.id, item);
                     });
 
-                    // Helper to check if two items are same (ignoring id)
-                    const isSameContent = (obj1: any, obj2: any) => {
-                      const o1 = { ...obj1 };
-                      const o2 = { ...obj2 };
-                      delete o1.id;
-                      delete o2.id;
-                      return JSON.stringify(o1) === JSON.stringify(o2);
-                    };
-
-                    const existingArray = Array.from(existingMap.values());
-
                     importedObj.forEach(item => {
                       if (item && item.id !== undefined) {
-                        // Check if exact same content already exists
-                        const isDup = existingArray.some(ex => isSameContent(ex, item));
-                        
-                        if (!isDup) {
-                          // Content is new. Check if ID clashes
-                          if (existingMap.has(item.id)) {
-                            // Clash! Generate new ID based on key
-                            const currentItems = Array.from(existingMap.values());
-                            let newId = item.id;
-                            
-                            if (key === "khambenh_patients") {
-                              const max = Math.max(0, ...currentItems.map(p => parseInt(String(p.id).replace('BN', '')) || 0));
-                              newId = `BN${String(max + 1).padStart(3, '0')}`;
-                            } else if (key === "khambenh_medicines") {
-                              const max = Math.max(0, ...currentItems.map(m => parseInt(String(m.id).replace('T', '')) || 0));
-                              newId = `T${String(max + 1).padStart(3, '0')}`;
-                            } else if (key === "khambenh_diagnosis") {
-                              const max = Math.max(0, ...currentItems.map(d => parseInt(String(d.id)) || 0));
-                              newId = max + 1;
-                            } else {
-                              newId = Date.now();
-                            }
-                            item.id = newId;
-                          }
-                          
-                          existingMap.set(item.id, item);
-                          existingArray.push(item);
-                        }
+                        // Upsert: cập nhật nếu trùng ID, thêm mới nếu chưa có
+                        existingMap.set(item.id, item);
                       }
                     });
 
@@ -209,14 +176,6 @@ export default function Header({ onMenuClick }: HeaderProps) {
               <UserIcon className="w-4 h-4" />
               <span className="hidden lg:inline">{user.email}</span>
             </div>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium text-red-300 hover:text-red-200 rounded-lg transition-colors whitespace-nowrap"
-              style={{ background: "rgba(255,80,80,0.15)" }}
-            >
-              <LogOut className="w-4 h-4" />
-              <span className="hidden md:inline">Đăng xuất</span>
-            </button>
           </>
         ) : (
           <button

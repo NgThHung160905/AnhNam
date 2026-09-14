@@ -2,12 +2,111 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Plus, Search, FileText, Edit2, Trash2, X, ClipboardList, Stethoscope, Pill } from "lucide-react";
+import { formatPatientCode, syncDiagnosisToMedicalSummary, removeDiagnosisFromMedicalSummary } from "@/lib/medicalSummaryService";
+import DatePicker, { calculateAge, formatDisplayDate } from "@/components/DatePicker";
 
 const EMPTY_MED_LINE = { medicineName: "", medicineQuantity: 1, medDays: "", medTimes: "", medAmount: "", medicineNote: "", medCustomUnit: "viên" };
 
+const Autocomplete = ({ id, value, onChange, onSelect, options, getOptionLabel, renderOption, filterOption, maxSuggestions = 5, placeholder, className, dropdownClassName = "w-full" }: any) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) setIsOpen(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const removeAccents = (str: string) => str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D');
+
+  const matchSearch = (text: string, search: string) => {
+    if (!search) return true;
+    return removeAccents(text.toLowerCase()).includes(removeAccents(search.toLowerCase()));
+  };
+
+  const filteredOptions = options.filter((opt: any) => {
+    if (filterOption) return filterOption(opt, value);
+    return matchSearch(getOptionLabel(opt), value);
+  }).slice(0, maxSuggestions);
+
+  return (
+    <div className="relative w-full" ref={wrapperRef}>
+      <input
+        id={id}
+        type="text"
+        value={value}
+        onChange={(e) => {
+          onChange(e.target.value);
+          setIsOpen(true);
+          setHighlightedIndex(-1);
+        }}
+        onClick={() => setIsOpen(true)}
+        onKeyDown={(e) => {
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            setIsOpen(true);
+            setHighlightedIndex(prev => Math.min(prev + 1, filteredOptions.length - 1));
+          } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            setHighlightedIndex(prev => Math.max(prev - 1, 0));
+          } else if (e.key === "Enter") {
+            const targetOpt = highlightedIndex >= 0 && highlightedIndex < filteredOptions.length
+              ? filteredOptions[highlightedIndex]
+              : (filteredOptions.length > 0 ? filteredOptions[0] : null);
+            if (targetOpt) {
+              e.preventDefault();
+              onChange(getOptionLabel(targetOpt));
+              if (onSelect) onSelect(targetOpt);
+              setIsOpen(false);
+            }
+          } else if (e.key === "Tab") {
+            if (isOpen && filteredOptions.length > 0 && !e.shiftKey) {
+              const targetOpt = highlightedIndex >= 0 && highlightedIndex < filteredOptions.length
+                ? filteredOptions[highlightedIndex]
+                : filteredOptions[0];
+              if (targetOpt) {
+                onChange(getOptionLabel(targetOpt));
+                if (onSelect) onSelect(targetOpt);
+                setIsOpen(false);
+              }
+            }
+          } else if (e.key === "Escape") {
+            setIsOpen(false);
+          }
+        }}
+        placeholder={placeholder}
+        className={className}
+      />
+      {isOpen && filteredOptions.length > 0 && (
+        <ul className={`absolute z-50 bg-white border border-slate-200 shadow-xl rounded-md mt-1 max-h-64 overflow-auto ${dropdownClassName}`}>
+          {filteredOptions.map((opt: any, index: number) => (
+            <li
+              key={index}
+              className={`px-3 py-2 cursor-pointer text-sm transition-colors ${highlightedIndex === index ? "bg-purple-100 text-purple-900" : "hover:bg-slate-50 text-slate-700"}`}
+              onMouseEnter={() => setHighlightedIndex(index)}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onChange(getOptionLabel(opt));
+                if (onSelect) onSelect(opt);
+                setIsOpen(false);
+              }}
+            >
+              {renderOption ? renderOption(opt) : getOptionLabel(opt)}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+};
+
+
 const DUMMY_DIAGNOSIS = [
   {
-    id: 1, patientName: "Nguyen Van A", doctorName: "Le Van C",
+    id: 1, patientId: "0001", patientName: "Nguyen Van A", doctorName: "Le Van C",
     diagnosis: "Viem hong cap", date: "2026-08-07 08:30",
     serviceName: "Khám nội", serviceFee: 150000,
     medicines: [
@@ -16,7 +115,7 @@ const DUMMY_DIAGNOSIS = [
     ]
   },
   {
-    id: 2, patientName: "Tran Thi B", doctorName: "Pham Thi D",
+    id: 2, patientId: "0002", patientName: "Tran Thi B", doctorName: "Pham Thi D",
     diagnosis: "Dau da day", date: "2026-08-06 14:15",
     serviceName: "Nội soi", serviceFee: 500000,
     medicines: [{ medicineName: "Vitamin C 1000mg", medicineQuantity: 1 }]
@@ -46,13 +145,15 @@ export default function DiagnosisPage() {
     const regex = /^(\d{4})-(\d{2})-(\d{2})( \d{2}:\d{2})?$/;
     const match = dateStr.match(regex);
     if (match) {
-      return `${match[3]}-${match[2]}-${match[1]}`;
+      return `${match[3]}-${match[2]}-${match[1]}${match[4] || ""}`;
     }
     return dateStr;
   };
 
-  const [newDiag, setNewDiag] = useState<any>({ patientName: "", doctorName: "", diagnosis: "", date: getCurrentFormattedDate(), followUpDate: "", serviceName: "", serviceFee: 80000, notes: "", medicines: [{ ...EMPTY_MED_LINE }] });
+  const [newDiag, setNewDiag] = useState<any>({ patientName: "", patientId: "", weight: "", doctorName: "", diagnosis: "", medicalHistory: "", date: getCurrentFormattedDate(), followUpDate: "", serviceName: "", serviceFee: 80000, notes: "", medicines: [{ ...EMPTY_MED_LINE }] });
   const [editingDiagId, setEditingDiagId] = useState<number | null>(null);
+  const [deletingDiag, setDeletingDiag] = useState<any | null>(null);
+  const [error, setError] = useState("");
   const [isLoaded, setIsLoaded] = useState(false);
   const [viewingPrescription, setViewingPrescription] = useState<any>(null);
   const [availableMedicines, setAvailableMedicines] = useState<any[]>([
@@ -63,29 +164,13 @@ export default function DiagnosisPage() {
   const [availableDoctors, setAvailableDoctors] = useState<any[]>(DUMMY_DOCTORS);
   const [savedPatients, setSavedPatients] = useState<any[]>([]);
 
-  const calculateAge = (dob: string) => {
-    if (!dob) return "";
-    const birthDate = new Date(dob);
-    const today = new Date();
-    if (isNaN(birthDate.getTime())) return "";
-
-    let months = (today.getFullYear() - birthDate.getFullYear()) * 12;
-    months -= birthDate.getMonth();
-    months += today.getMonth();
-
-    if (today.getDate() < birthDate.getDate()) {
-      months--;
+  const getPatientCode = (diag: any) => {
+    if (diag.patientId) return formatPatientCode(diag.patientId);
+    if (diag.patientName) {
+      const found = savedPatients.find((p: any) => p.name?.trim().toLowerCase() === diag.patientName?.trim().toLowerCase());
+      if (found?.id) return formatPatientCode(found.id);
     }
-
-    if (months < 0) return "Chưa sinh";
-    if (months === 0) return "Dưới 1 tháng tuổi";
-
-    const years = Math.floor(months / 12);
-    const remainingMonths = months % 12;
-
-    if (years === 0) return `${months} tháng tuổi`;
-    if (remainingMonths === 0) return `${months} tháng (${years} tuổi)`;
-    return `${months} tháng (${years} tuổi ${remainingMonths} tháng)`;
+    return "-";
   };
 
   const calculateBMI = (weight: string, height: string) => {
@@ -134,96 +219,7 @@ export default function DiagnosisPage() {
     return "bg-emerald-50 text-emerald-700 border-emerald-200";
   };
 
-  // Masked input cho Lịch Tái Khám: cursor tự do, user click vào DD/MM/YYYY để chỉnh sửa tại chỗ
-  const followUpRef = useRef<HTMLInputElement>(null);
-  const FOLLOW_UP_CURRENT_YEAR = new Date().getFullYear().toString();
-  const FOLLOW_UP_DASH_POS = new Set([2, 5]);
 
-  // Vị trí chữ số liền kề về bên phải từ `from` (inclusive)
-  const fuNextDigit = (from: number): number | null => {
-    for (let i = from; i < 10; i++) if (!FOLLOW_UP_DASH_POS.has(i)) return i;
-    return null;
-  };
-  // Vị trí chữ số liền kề về bên trái `before` (exclusive)
-  const fuPrevDigit = (before: number): number | null => {
-    for (let i = before - 1; i >= 0; i--) if (!FOLLOW_UP_DASH_POS.has(i)) return i;
-    return null;
-  };
-
-  const fuInitMask = () => `__-__-${FOLLOW_UP_CURRENT_YEAR}`;
-  const fuIsEmpty = (v: string) => !v || v.replace(/[-_]/g, "") === "";
-
-  const handleFollowUpKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    const key = e.key;
-    if (e.ctrlKey || e.metaKey || key === "Tab") return;
-    e.preventDefault();
-
-    const input = followUpRef.current;
-    if (!input) return;
-    const cur = input.selectionStart ?? 0;
-    const val = (newDiag.followUpDate?.length === 10) ? newDiag.followUpDate : fuInitMask();
-
-    if (/^[0-9]$/.test(key)) {
-      const pos = fuNextDigit(cur);
-      if (pos !== null) {
-        const next = val.slice(0, pos) + key + val.slice(pos + 1);
-        setNewDiag((p: any) => ({ ...p, followUpDate: next }));
-        const afterPos = fuNextDigit(pos + 1) ?? 10;
-        requestAnimationFrame(() => input.setSelectionRange(afterPos, afterPos));
-      }
-    } else if (key === "Backspace") {
-      const pos = fuPrevDigit(cur);
-      if (pos !== null) {
-        const next = val.slice(0, pos) + "_" + val.slice(pos + 1);
-        setNewDiag((p: any) => ({ ...p, followUpDate: fuIsEmpty(next) ? "" : next }));
-        requestAnimationFrame(() => input.setSelectionRange(pos, pos));
-      }
-    } else if (key === "Delete") {
-      const pos = fuNextDigit(cur);
-      if (pos !== null) {
-        const next = val.slice(0, pos) + "_" + val.slice(pos + 1);
-        setNewDiag((p: any) => ({ ...p, followUpDate: fuIsEmpty(next) ? "" : next }));
-        requestAnimationFrame(() => input.setSelectionRange(pos, pos));
-      }
-    } else if (key === "ArrowLeft") {
-      const pos = fuPrevDigit(cur) ?? 0;
-      requestAnimationFrame(() => input.setSelectionRange(pos, pos));
-    } else if (key === "ArrowRight") {
-      const pos = fuNextDigit(cur + 1) ?? cur;
-      requestAnimationFrame(() => input.setSelectionRange(pos, pos));
-    } else if (key === "Home") {
-      requestAnimationFrame(() => input.setSelectionRange(0, 0));
-    } else if (key === "End") {
-      requestAnimationFrame(() => input.setSelectionRange(9, 9));
-    }
-  };
-
-  const handleFollowUpFocus = () => {
-    if (!newDiag.followUpDate) {
-      const mask = fuInitMask();
-      setNewDiag((p: any) => ({ ...p, followUpDate: mask }));
-      requestAnimationFrame(() => followUpRef.current?.setSelectionRange(0, 0));
-    }
-  };
-
-  const handleFollowUpClick = () => {
-    requestAnimationFrame(() => {
-      const input = followUpRef.current;
-      if (!input) return;
-      const pos = input.selectionStart ?? 0;
-      // Nếu click đúng vào dấu `-`, nậy sang chữ số tiếp theo
-      if (FOLLOW_UP_DASH_POS.has(pos)) {
-        const next = fuNextDigit(pos) ?? pos;
-        input.setSelectionRange(next, next);
-      }
-    });
-  };
-
-  const handleFollowUpBlur = () => {
-    if (fuIsEmpty(newDiag.followUpDate || "")) {
-      setNewDiag((p: any) => ({ ...p, followUpDate: "" }));
-    }
-  };
 
   useEffect(() => {
     const saved = localStorage.getItem("khambenh_diagnosis");
@@ -248,13 +244,21 @@ export default function DiagnosisPage() {
     }
   }, [newDiag, showAddModal, editingDiagId, isLoaded]);
 
-  const resetNewDiag = () => ({ patientName: "", patientId: "", doctorName: "", diagnosis: "", date: getCurrentFormattedDate(), followUpDate: "", serviceName: "", serviceFee: 80000, notes: "", medicines: [{ ...EMPTY_MED_LINE }] });
+  const resetNewDiag = () => ({ patientName: "", patientId: "", weight: "", doctorName: "", diagnosis: "", medicalHistory: "", date: getCurrentFormattedDate(), followUpDate: "", serviceName: "", serviceFee: 80000, notes: "", medicines: [{ ...EMPTY_MED_LINE }] });
 
   const handleSaveDiag = () => {
     if (!newDiag.patientName.trim() || !newDiag.diagnosis.trim()) {
-      alert("Vui lòng chọn Bệnh nhân và nhập Chẩn đoán!");
+      setError("Vui lòng chọn Bệnh nhân và nhập Chẩn đoán!");
       return;
     }
+    setError("");
+
+    // Chuẩn hóa số lượng thuốc (tối thiểu 1)
+    const sanitizedMeds = (newDiag.medicines || []).map((med: any) => ({
+      ...med,
+      medicineQuantity: Math.max(1, parseInt(String(med.medicineQuantity)) || 1)
+    }));
+    newDiag.medicines = sanitizedMeds;
 
     // Validation for stock
     if (newDiag.medicines && newDiag.medicines.length > 0) {
@@ -273,7 +277,7 @@ export default function DiagnosisPage() {
           }
 
           if (med.medicineQuantity > currentStock + oldQuantity) {
-            alert(`Không đủ thuốc trong kho cho ${med.medicineName}. Tồn kho hiện tại: ${currentStock}`);
+            setError(`Không đủ thuốc trong kho cho ${med.medicineName}. Tồn kho hiện tại: ${currentStock}`);
             return;
           }
         }
@@ -327,10 +331,27 @@ export default function DiagnosisPage() {
         });
       }
 
-      setDiagnoses(diagnoses.map(d => d.id === editingDiagId ? { id: editingDiagId, ...newDiag } : d));
+      let finalPatientId = newDiag.patientId;
+      if (!finalPatientId && newDiag.patientName) {
+        const match = savedPatients.find(p => p.name?.trim().toLowerCase() === newDiag.patientName?.trim().toLowerCase());
+        if (match?.id) finalPatientId = match.id;
+      }
+
+      const savedDiagRecord = { id: editingDiagId, ...newDiag, patientId: finalPatientId };
+      setDiagnoses(diagnoses.map(d => d.id === editingDiagId ? savedDiagRecord : d));
+      syncDiagnosisToMedicalSummary(savedDiagRecord);
     } else {
-      const nextId = diagnoses.length > 0 ? Math.max(...diagnoses.map(d => d.id)) + 1 : 1;
-      setDiagnoses([{ id: nextId, ...newDiag }, ...diagnoses]);
+      let finalPatientId = newDiag.patientId;
+      if (!finalPatientId && newDiag.patientName) {
+        const match = savedPatients.find(p => p.name?.trim().toLowerCase() === newDiag.patientName?.trim().toLowerCase());
+        if (match?.id) finalPatientId = match.id;
+      }
+
+      const nums = diagnoses.map(d => typeof d.id === 'number' ? d.id : parseInt(String(d.id).replace(/\D/g, ''))).filter(n => !isNaN(n));
+      const nextId = nums.length > 0 ? Math.max(...nums) + 1 : 1;
+      const savedDiagRecord = { id: nextId, ...newDiag, patientId: finalPatientId };
+      setDiagnoses([savedDiagRecord, ...diagnoses]);
+      syncDiagnosisToMedicalSummary(savedDiagRecord);
 
       // Deduct new stock (ch? trừ khi đơn vị khớp)
       if (newDiag.medicines) {
@@ -359,53 +380,211 @@ export default function DiagnosisPage() {
       window.dispatchEvent(new Event("khambenh_medicines_updated"));
     }
 
+    if (newDiag.weight !== undefined && newDiag.weight !== "") {
+      const pId = newDiag.patientId || (savedPatients.find(p => p.name?.trim().toLowerCase() === newDiag.patientName?.trim().toLowerCase())?.id);
+      const ptIdx = savedPatients.findIndex(p => pId ? p.id === pId : p.name?.trim().toLowerCase() === newDiag.patientName?.trim().toLowerCase());
+      if (ptIdx !== -1) {
+        const updatedPts = [...savedPatients];
+        updatedPts[ptIdx] = { ...updatedPts[ptIdx], weight: newDiag.weight };
+        setSavedPatients(updatedPts);
+        try {
+          localStorage.setItem("khambenh_patients", JSON.stringify(updatedPts));
+          window.dispatchEvent(new Event("khambenh_patients_updated"));
+        } catch (e) {}
+      }
+    }
+
     setNewDiag(resetNewDiag());
     setShowAddModal(false);
     setEditingDiagId(null);
+    setError("");
     localStorage.removeItem("khambenh_draft_diag");
   };
 
   const handleEditClick = (diag: any) => {
     setEditingDiagId(diag.id);
     const existingFollowUp = diag.followUpDate || "";
-    setNewDiag({ patientName: diag.patientName, doctorName: diag.doctorName, diagnosis: diag.diagnosis, date: diag.date, followUpDate: existingFollowUp, serviceName: diag.serviceName, serviceFee: diag.serviceFee, notes: diag.notes || "", medicines: (diag.medicines && diag.medicines.length > 0) ? diag.medicines : [{ ...EMPTY_MED_LINE }] });
+    const matchedPt = savedPatients.find((p: any) => diag.patientId ? p.id === diag.patientId : p.name?.trim().toLowerCase() === diag.patientName?.trim().toLowerCase());
+    const existingWeight = diag.weight !== undefined && diag.weight !== null && diag.weight !== ""
+      ? diag.weight
+      : (matchedPt?.weight || "");
+    setNewDiag({ 
+      patientName: diag.patientName, 
+      patientId: diag.patientId || (matchedPt ? matchedPt.id : ""),
+      weight: existingWeight,
+      doctorName: diag.doctorName, 
+      diagnosis: diag.diagnosis, 
+      medicalHistory: diag.medicalHistory || "",
+      date: diag.date, 
+      followUpDate: existingFollowUp, 
+      serviceName: diag.serviceName, 
+      serviceFee: diag.serviceFee, 
+      notes: diag.notes || "", 
+      medicines: (diag.medicines && diag.medicines.length > 0) ? diag.medicines : [{ ...EMPTY_MED_LINE }] 
+    });
+    setError("");
     setShowAddModal(true);
   };
 
-  const handleDeleteDiag = (id: number) => {
-    if (window.confirm("Bạn có chắc chắn muốn xóa phiếu khám này không? Thuốc đã kê sẽ được hoàn lại vào kho.")) {
-      const diagToDelete = diagnoses.find(d => d.id === id);
+  const handleDeleteDiag = (diag: any) => {
+    setDeletingDiag(diag);
+  };
 
-      if (diagToDelete && diagToDelete.medicines) {
-        let updatedMeds = [...availableMedicines];
-        let medsChanged = false;
+  const confirmDeleteDiag = () => {
+    if (!deletingDiag) return;
+    const diagToDelete = deletingDiag;
+    const id = diagToDelete.id;
 
-        diagToDelete.medicines.forEach((med: any) => {
-          if (med.medicineName && med.medicineQuantity > 0) {
-            const medIndex = updatedMeds.findIndex((m: any) => m.name === med.medicineName);
-            if (medIndex !== -1) {
-              updatedMeds[medIndex] = {
-                ...updatedMeds[medIndex],
-                stock: (updatedMeds[medIndex].stock !== undefined ? updatedMeds[medIndex].stock : 100) + med.medicineQuantity
-              };
-              medsChanged = true;
+    if (diagToDelete.medicines) {
+      let updatedMeds = [...availableMedicines];
+      let medsChanged = false;
+
+      diagToDelete.medicines.forEach((med: any) => {
+        if (med.medicineName && med.medicineQuantity > 0) {
+          const medIndex = updatedMeds.findIndex((m: any) => m.name === med.medicineName);
+          if (medIndex !== -1) {
+            updatedMeds[medIndex] = {
+              ...updatedMeds[medIndex],
+              stock: (updatedMeds[medIndex].stock !== undefined ? updatedMeds[medIndex].stock : 100) + med.medicineQuantity
+            };
+            medsChanged = true;
+          }
+        }
+      });
+
+      if (medsChanged) {
+        setAvailableMedicines(updatedMeds);
+        localStorage.setItem("khambenh_medicines", JSON.stringify(updatedMeds));
+        window.dispatchEvent(new Event("khambenh_medicines_updated"));
+      }
+    }
+
+    setDiagnoses(prev => {
+      const updated = prev.filter(d => d.id !== id);
+      const newTotal = Math.ceil(updated.length / itemsPerPage);
+      if (currentPage > newTotal && newTotal > 0) {
+        setCurrentPage(newTotal);
+      }
+      return updated;
+    });
+    removeDiagnosisFromMedicalSummary(id, diagToDelete.patientId);
+    setDeletingDiag(null);
+  };
+
+  const updateMedLine = (idx: number, field: string, value: any) => {
+    setNewDiag((prev: any) => {
+      const updatedMedicines = prev.medicines.map((m: any, i: number) => {
+        if (i !== idx) return m;
+
+        const updated = { ...m, [field]: value };
+
+        // Tự động tính toán tổng số lượng thuốc = C (số viên/lần) * B (số lần/ngày) * A (số ngày)
+        // Áp dụng khi người dùng nhập hoặc chỉnh sửa các thông số liều dùng
+        if (field === "medAmount" || field === "medTimes" || field === "medDays") {
+          const parseFactor = (v: any) => {
+            if (v === null || v === undefined) return NaN;
+            const s = String(v).trim().replace(",", ".");
+            if (!s) return NaN;
+            if (s.includes("/")) {
+              const parts = s.split("/");
+              if (parts.length === 2) {
+                const num = parseFloat(parts[0]);
+                const den = parseFloat(parts[1]);
+                if (!isNaN(num) && !isNaN(den) && den !== 0) return num / den;
+              }
+            }
+            return parseFloat(s);
+          };
+
+          const c = parseFactor(field === "medAmount" ? value : updated.medAmount);
+          const b = parseFactor(field === "medTimes" ? value : updated.medTimes);
+          const a = parseFactor(field === "medDays" ? value : updated.medDays);
+
+          if (!isNaN(c) && c > 0 && !isNaN(b) && b > 0 && !isNaN(a) && a > 0) {
+            const total = c * b * a;
+            updated.medicineQuantity = total % 1 === 0 ? Math.round(total) : Math.ceil(total);
+          }
+        }
+
+        // Đồng bộ hoặc gợi ý đơn vị khi chọn thuốc (hỗ trợ tìm theo tên hoặc Mã Thuốc)
+        if (field === "medicineName") {
+          const cleanVal = String(value || "").trim().toLowerCase();
+          const medInfo = availableMedicines.find((item: any) => 
+            item.name?.trim().toLowerCase() === cleanVal ||
+            (item.id && item.id.trim().toLowerCase() === cleanVal)
+          );
+          if (medInfo) {
+            updated.medicineName = medInfo.name;
+            if (medInfo.id) updated.medicineId = medInfo.id;
+            if (medInfo.unit) {
+              if (!updated.medicineUnit) updated.medicineUnit = medInfo.unit;
+              if (!updated.medCustomUnit || updated.medCustomUnit === "viên") {
+                updated.medCustomUnit = medInfo.unit.toLowerCase();
+              }
             }
           }
-        });
-
-        if (medsChanged) {
-          setAvailableMedicines(updatedMeds);
-          localStorage.setItem("khambenh_medicines", JSON.stringify(updatedMeds));
-          window.dispatchEvent(new Event("khambenh_medicines_updated"));
         }
-      }
 
-      setDiagnoses(diagnoses.filter(d => d.id !== id));
+        return updated;
+      });
+
+      return { ...prev, medicines: updatedMedicines };
+    });
+  };
+  const addMedLine = () => {
+    const nextIdx = newDiag.medicines.length;
+    setNewDiag((prev: any) => ({
+      ...prev,
+      medicines: [...prev.medicines, { ...EMPTY_MED_LINE }]
+    }));
+    setTimeout(() => {
+      const el = document.getElementById(`med-name-input-${nextIdx}`);
+      if (el) el.focus();
+    }, 60);
+  };
+
+  const handleQtyKeyDown = (idx: number, e: React.KeyboardEvent) => {
+    if ((e.key === "Tab" && !e.shiftKey) || e.key === "Enter") {
+      e.preventDefault();
+      if (idx === newDiag.medicines.length - 1) {
+        addMedLine();
+      } else {
+        const nextInput = document.getElementById(`med-name-input-${idx + 1}`);
+        if (nextInput) nextInput.focus();
+      }
+    } else if (e.key === "ArrowRight") {
+      const amountInput = document.getElementById(`med-amount-input-${idx}`);
+      if (amountInput) {
+        e.preventDefault();
+        amountInput.focus();
+      }
     }
   };
 
-  const updateMedLine = (idx: number, field: string, value: any) => setNewDiag({ ...newDiag, medicines: newDiag.medicines.map((m: any, i: number) => i === idx ? { ...m, [field]: value } : m) });
-  const addMedLine = () => setNewDiag({ ...newDiag, medicines: [...newDiag.medicines, { ...EMPTY_MED_LINE }] });
+  const handleEndRowKeyDown = (idx: number, e: React.KeyboardEvent) => {
+    if ((e.key === "Tab" && !e.shiftKey) || e.key === "Enter") {
+      e.preventDefault();
+      if (idx === newDiag.medicines.length - 1) {
+        addMedLine();
+      } else {
+        const nextInput = document.getElementById(`med-name-input-${idx + 1}`);
+        if (nextInput) nextInput.focus();
+      }
+    }
+  };
+
+  const handleDaysKeyDown = (idx: number, e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (idx === newDiag.medicines.length - 1) {
+        addMedLine();
+      } else {
+        const nextInput = document.getElementById(`med-name-input-${idx + 1}`);
+        if (nextInput) nextInput.focus();
+      }
+    }
+  };
+
   const removeMedLine = (idx: number) => { if (newDiag.medicines.length > 1) setNewDiag({ ...newDiag, medicines: newDiag.medicines.filter((_: any, i: number) => i !== idx) }); };
 
   // Remove Vietnamese accents for better searching
@@ -456,17 +635,15 @@ export default function DiagnosisPage() {
   };
 
   const filteredDiagnoses = diagnoses.filter(diag => {
+    const ptCode = getPatientCode(diag);
     return matchSearch(diag.patientName, searchTerm) ||
-      matchSearch(diag.doctorName, searchTerm) ||
-      matchSearch(diag.serviceName, searchTerm);
+      matchSearch(ptCode, searchTerm) ||
+      matchSearch(diag.patientId || "", searchTerm);
   });
 
   const totalPages = Math.ceil(filteredDiagnoses.length / itemsPerPage);
-  const paginatedDiagnoses = filteredDiagnoses.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-
-  const totalRevenue = filteredDiagnoses.reduce((acc, diag) => {
-    return acc + (Number(diag.serviceFee) || 0);
-  }, 0);
+  const safeCurrentPage = totalPages > 0 ? Math.min(currentPage, totalPages) : 1;
+  const paginatedDiagnoses = filteredDiagnoses.slice((safeCurrentPage - 1) * itemsPerPage, safeCurrentPage * itemsPerPage);
 
   return (
     <div className="space-y-6">
@@ -475,19 +652,20 @@ export default function DiagnosisPage() {
           <h1 className="text-2xl font-bold text-slate-800">{"Khám Bệnh & Kê Toa"}</h1>
           <p className="text-slate-500 mt-1">Ghi nhận chuẩn đoán và xuất toa thuốc cho bệnh nhân</p>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="bg-emerald-50 text-emerald-700 px-4 py-2 rounded-lg border border-emerald-200 shadow-sm flex items-center">
-            <span className="text-sm font-medium mr-2">Tổng Doanh Thu:</span>
-            <span className="text-lg font-bold">{totalRevenue.toLocaleString('vi-VN')} ₫</span>
-          </div>
+        <div>
           <button onClick={() => {
             setEditingDiagId(null);
+            const savedMeds = localStorage.getItem("khambenh_medicines");
+            if (savedMeds) { try { setAvailableMedicines(JSON.parse(savedMeds)); } catch (e) { } }
+            const savedPts = localStorage.getItem("khambenh_patients");
+            if (savedPts) { try { setSavedPatients(JSON.parse(savedPts)); } catch (e) { } }
             const draft = localStorage.getItem("khambenh_draft_diag");
             if (draft) {
               try { setNewDiag(JSON.parse(draft)); } catch { setNewDiag(resetNewDiag()); }
             } else {
               setNewDiag(resetNewDiag());
             }
+            setError("");
             setShowAddModal(true);
           }} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors font-medium shadow-sm shadow-purple-500/20">
             <Plus className="w-4 h-4" /><span>Phiếu khám mới</span>
@@ -499,40 +677,35 @@ export default function DiagnosisPage() {
         <div className="p-4 border-b border-slate-200 flex items-center gap-4 bg-slate-50">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input type="text" value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }} placeholder="Tìm kiếm theo tên bệnh nhân..." className="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm text-slate-900 placeholder-slate-500" />
+            <input type="text" value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }} placeholder="Tìm kiếm theo mã BN, tên bệnh nhân..." className="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm text-slate-900 placeholder-slate-500" />
           </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 text-slate-600 border-b border-slate-200">
               <tr>
-                <th className="px-6 py-3 font-medium">Thời gian</th>
-                <th className="px-6 py-3 font-medium">B&#7879;nh nh&#226;n</th>
-                <th className="px-6 py-3 font-medium">Bác sĩ khám</th>
-                <th className="px-6 py-3 font-medium">Ch&#7849;n &#273;o&#225;n</th>
-                <th className="px-6 py-3 font-medium">Thuốc kê</th>
-                <th className="px-6 py-3 font-medium">Lịch tái khám</th>
+                <th className="px-6 py-3 font-medium whitespace-nowrap">Thời gian</th>
+                <th className="px-6 py-3 font-medium whitespace-nowrap">Mã BN</th>
+                <th className="px-6 py-3 font-medium whitespace-nowrap">Bệnh nhân</th>
+                <th className="px-6 py-3 font-medium whitespace-nowrap">Bác sĩ khám</th>
+                <th className="px-6 py-3 font-medium">Chẩn đoán</th>
+                <th className="px-6 py-3 font-medium whitespace-nowrap">Lịch tái khám</th>
                 <th className="px-6 py-3 font-medium">Lưu ý</th>
-                <th className="px-6 py-3 font-medium text-right">Toa thuốc</th>
+                <th className="px-6 py-3 font-medium text-right whitespace-nowrap">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
               {paginatedDiagnoses.map((diag) => (
                 <tr key={diag.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-6 py-4 text-slate-500">{formatDateDisplay(diag.date)}</td>
-                  <td className="px-6 py-4 font-medium text-slate-800">{diag.patientName}</td>
-                  <td className="px-6 py-4 text-slate-600">{diag.doctorName}</td>
-                  <td className="px-6 py-4 text-slate-800 font-medium">{diag.diagnosis}</td>
-                  <td className="px-6 py-4">
-                    {diag.medicines && diag.medicines.filter((m: any) => m.medicineName).length > 0 ? (
-                      <div className="flex flex-wrap gap-1">
-                        {diag.medicines.filter((m: any) => m.medicineName).map((m: any, i: number) => (
-                          <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-xs font-medium border border-emerald-200">
-                            {m.medicineName} <span className="ml-1 text-emerald-500">x{m.medicineQuantity}</span>
-                          </span>
-                        ))}
-                      </div>
-                    ) : <span className="text-slate-400 italic text-xs">Chua ke thuoc</span>}
+                  <td className="px-6 py-4 text-slate-500 whitespace-nowrap">{formatDateDisplay(diag.date)}</td>
+                  <td className="px-6 py-4 font-mono font-medium text-blue-600 whitespace-nowrap">{getPatientCode(diag)}</td>
+                  <td className="px-6 py-4 font-medium text-slate-800 whitespace-nowrap">{diag.patientName}</td>
+                  <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{diag.doctorName}</td>
+                  <td className="px-6 py-4 text-slate-800 font-medium">
+                    <div>{diag.diagnosis}</div>
+                    {diag.medicalHistory && (
+                      <div className="text-xs text-slate-500 font-normal mt-0.5">{diag.medicalHistory}</div>
+                    )}
                   </td>
                   <td className="px-6 py-4 text-slate-600 whitespace-nowrap">
                     {diag.followUpDate ? (
@@ -552,7 +725,7 @@ export default function DiagnosisPage() {
                         <FileText className="w-3.5 h-3.5" />Xem chi tiết
                       </button>
                       <button onClick={() => handleEditClick(diag)} className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"><Edit2 className="w-4 h-4" /></button>
-                      <button onClick={() => handleDeleteDiag(diag.id)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
+                      <button onClick={() => handleDeleteDiag(diag)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Xóa phiếu khám"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   </td>
                 </tr>
@@ -585,8 +758,8 @@ export default function DiagnosisPage() {
       </div>
 
       {showAddModal && (
-        <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50 p-4" onClick={() => { setShowAddModal(false); setEditingDiagId(null); }}>
-          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50 p-4" onClick={() => { setShowAddModal(false); setEditingDiagId(null); setError(""); }}>
+          <div className="bg-white rounded-xl shadow-xl max-w-3xl w-full p-6 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <h3 className="text-xl font-bold text-slate-800 mb-6 pb-4 border-b border-slate-200">{editingDiagId ? "Chỉnh Sửa Phiếu Khám" : "Phiếu Khám Mới"}</h3>
             <div className="space-y-6">
 
@@ -595,24 +768,83 @@ export default function DiagnosisPage() {
                 <h4 className="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
                   <ClipboardList className="w-4 h-4 text-purple-600" /> Thông Tin Khám
                 </h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Tên Bệnh Nhân</label>
-                    <select
-                      value={newDiag.patientId || ""}
-                      onChange={e => {
-                        const pt = savedPatients.find((p: any) => p.id === e.target.value);
-                        setNewDiag({ ...newDiag, patientId: e.target.value, patientName: pt ? pt.name : "" });
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="sm:col-span-2">
+                    <label className="block text-sm font-medium text-slate-700 mb-1 flex justify-between items-center">
+                      <span>Tên Bệnh Nhân</span>
+                      {newDiag.patientId && (
+                        <span className="text-xs font-mono font-medium text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
+                          Mã: {formatPatientCode(newDiag.patientId)}
+                        </span>
+                      )}
+                    </label>
+                    <Autocomplete
+                      value={newDiag.patientName || ""}
+                      onChange={(val: string) => {
+                        const pt = savedPatients.find((p: any) => {
+                          const ptCode = formatPatientCode(p.id);
+                          const rawId = p.id ? String(p.id).trim().toLowerCase() : "";
+                          const cleanVal = val.trim().toLowerCase();
+                          return p.name?.trim().toLowerCase() === cleanVal ||
+                                 ptCode.toLowerCase() === cleanVal ||
+                                 rawId === cleanVal ||
+                                 `bn${ptCode.toLowerCase()}` === cleanVal;
+                        });
+                        setNewDiag((prev: any) => ({
+                          ...prev,
+                          patientName: val,
+                          patientId: pt ? pt.id : (val === "" ? "" : prev.patientId),
+                          weight: pt?.weight !== undefined && pt?.weight !== "" ? pt.weight : prev.weight
+                        }));
                       }}
+                      onSelect={(pt: any) => setNewDiag((prev: any) => ({
+                        ...prev,
+                        patientName: pt.name,
+                        patientId: pt.id,
+                        weight: pt.weight !== undefined && pt.weight !== "" ? pt.weight : prev.weight
+                      }))}
+                      options={savedPatients}
+                      getOptionLabel={(p: any) => p.name}
+                      filterOption={(p: any, query: string) => {
+                        if (!query) return true;
+                        const ptCode = formatPatientCode(p.id);
+                        const rawId = p.id ? String(p.id) : "";
+                        const name = p.name || "";
+                        return matchSearch(name, query) ||
+                               matchSearch(ptCode, query) ||
+                               matchSearch(rawId, query) ||
+                               matchSearch(`BN${ptCode}`, query) ||
+                               matchSearch(`BN${rawId}`, query);
+                      }}
+                      renderOption={(p: any) => (
+                        <div className="flex items-center justify-between py-0.5">
+                          <span className="font-medium text-slate-800">{p.name}</span>
+                          <span className="font-mono text-xs font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
+                            {formatPatientCode(p.id)}
+                          </span>
+                        </div>
+                      )}
+                      placeholder="-- Chọn theo tên hoặc mã BN --"
+                      maxSuggestions={7}
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-slate-900"
-                    >
-                      <option value="">-- Chọn bệnh nhân --</option>
-                      {savedPatients.map((pt: any) => (
-                        <option key={pt.id} value={pt.id}>{pt.name} ({pt.id})</option>
-                      ))}
-                    </select>
+                    />
                   </div>
+
                   <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Cân nặng</label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={newDiag.weight ?? ""}
+                        onChange={e => setNewDiag({ ...newDiag, weight: e.target.value })}
+                        className="w-full px-3 py-2 pr-9 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-slate-900"
+                        placeholder="VD: 15"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">kg</span>
+                    </div>
+                  </div>
+
+                  <div className="sm:col-span-3">
                     <label className="block text-sm font-medium text-slate-700 mb-1">Bác sĩ khám</label>
                     <select
                       value={newDiag.doctorName || ""}
@@ -625,32 +857,40 @@ export default function DiagnosisPage() {
                     </select>
                   </div>
 
-                  <div className="col-span-2">
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Ch&#7849;n &#273;o&#225;n</label>
+                  <div className="sm:col-span-3">
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Chẩn đoán</label>
                     <input type="text" value={newDiag.diagnosis} onChange={e => setNewDiag({ ...newDiag, diagnosis: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-slate-900"
                       placeholder="Bệnh..." />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Thời gian</label>
-                    <input type="text" value={newDiag.date} onChange={e => setNewDiag({ ...newDiag, date: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-slate-900" placeholder="DD-MM-YYYY" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Lịch Tái Khám</label>
-                    <input
-                      ref={followUpRef}
-                      type="text"
-                      value={newDiag.followUpDate}
-                      onChange={() => { }}
-                      onKeyDown={handleFollowUpKeyDown}
-                      onFocus={handleFollowUpFocus}
-                      onClick={handleFollowUpClick}
-                      onBlur={handleFollowUpBlur}
-                      maxLength={10}
-                      inputMode="numeric"
-                      autoComplete="off"
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-slate-900 tracking-widest"
-                      placeholder="DD-MM-YYYY"
+                  <div className="sm:col-span-3">
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Bệnh sử – Khám</label>
+                    <textarea
+                      rows={2}
+                      value={newDiag.medicalHistory || ""}
+                      onChange={e => setNewDiag({ ...newDiag, medicalHistory: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-slate-900 resize-none"
+                      placeholder="Nhập bệnh sử, triệu chứng và kết quả khám (ví dụ: Sốt 3 ngày, ho...)"
                     />
+                  </div>
+                  <div className="sm:col-span-3 grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1 whitespace-nowrap">Thời gian</label>
+                      <DatePicker
+                        value={newDiag.date}
+                        onChange={(val) => setNewDiag({ ...newDiag, date: val })}
+                        placeholder="DD-MM-YYYY"
+                        align="left"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1 whitespace-nowrap">Lịch Tái Khám</label>
+                      <DatePicker
+                        value={newDiag.followUpDate}
+                        onChange={(val) => setNewDiag({ ...newDiag, followUpDate: val })}
+                        placeholder="DD-MM-YYYY"
+                        align="right"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -682,30 +922,108 @@ export default function DiagnosisPage() {
                     </button>
                   </div>
 
-                  <div className="border border-slate-200 rounded-lg overflow-hidden bg-white">
+                  <div className="flex items-center gap-2 text-xs text-purple-700 bg-purple-50/80 px-3 py-1.5 rounded-lg border border-purple-200 mb-3 whitespace-nowrap">
+                    <span className="font-bold text-purple-900 whitespace-nowrap">💡 Phím Tắt:</span>
+                    <span className="whitespace-nowrap text-purple-800">Nhấn <strong>Tab</strong> hoặc <strong>Enter</strong> để thêm thuốc tiếp theo</span>
+                  </div>
+
+                  <div className="border border-slate-200 rounded-lg bg-white">
                     <table className="w-full text-sm">
                       <thead className="bg-slate-50 text-slate-600 border-b border-slate-200">
                         <tr>
-                          <th className="px-3 py-2 font-medium text-left">T&#234;n thu&#7889;c</th>
-                          <th className="px-3 py-2 font-medium text-center w-12">SL</th>
-                          <th className="px-3 py-2 font-medium text-center w-10">&#272;V</th>
-                          <th className="px-3 py-2 font-medium text-left min-w-[280px]">Cách dùng</th>
+                          <th className="px-3 py-2 font-medium text-left">Tên thuốc / Mã thuốc</th>
+                          <th className="px-3 py-2 font-medium text-center w-14">SL</th>
+                          <th className="px-3 py-2 font-medium text-center w-12">ĐV</th>
+                          <th className="px-3 py-2 font-medium text-left min-w-[340px]">Cách dùng</th>
                           <th className="w-8"></th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         {newDiag.medicines.map((med: any, idx: number) => {
-                          const medInfo = availableMedicines.find((m: any) => m.name === med.medicineName);
+                          const medInfo = availableMedicines.find((m: any) => 
+                            m.name === med.medicineName || (m.id && m.id === med.medicineName) || (m.id && m.id === med.medicineId)
+                          );
                           return (
                             <tr key={idx}>
-                              <td className="px-2 py-1.5">
-                                <select value={med.medicineName} onChange={e => updateMedLine(idx, "medicineName", e.target.value)} className="w-full px-1 py-1 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-slate-900 text-xs">
-                                  <option value="">-- Chọn thuốc --</option>
-                                  {availableMedicines.map((m: any) => <option key={m.id} value={m.name}>{m.name}</option>)}
-                                </select>
+                              <td className="px-2 py-1.5 relative">
+                                <div className="relative">
+                                  <Autocomplete
+                                    id={`med-name-input-${idx}`}
+                                    value={med.medicineName}
+                                    onChange={(val: string) => {
+                                      const cleanVal = val.trim().toLowerCase();
+                                      const matched = availableMedicines.find((m: any) =>
+                                        m.id && m.id.trim().toLowerCase() === cleanVal
+                                      );
+                                      if (matched) {
+                                        updateMedLine(idx, "medicineName", matched.name);
+                                      } else {
+                                        updateMedLine(idx, "medicineName", val);
+                                      }
+                                    }}
+                                    onSelect={(selectedMed: any) => {
+                                      updateMedLine(idx, "medicineName", selectedMed.name);
+                                      setTimeout(() => {
+                                        const qtyInput = document.getElementById(`med-qty-input-${idx}`) as HTMLInputElement;
+                                        if (qtyInput) {
+                                          qtyInput.focus();
+                                          qtyInput.select();
+                                        }
+                                      }, 60);
+                                    }}
+                                    options={availableMedicines}
+                                    getOptionLabel={(m: any) => m.name}
+                                    filterOption={(m: any, query: string) => {
+                                      if (!query) return true;
+                                      const name = m.name || "";
+                                      const code = m.id || "";
+                                      const type = m.type || "";
+                                      return matchSearch(name, query) ||
+                                             matchSearch(code, query) ||
+                                             matchSearch(type, query);
+                                    }}
+                                    renderOption={(m: any) => (
+                                      <div className="flex items-center justify-between gap-2 py-0.5">
+                                        <div className="flex flex-col min-w-0 flex-1">
+                                          <div className="flex items-center gap-2">
+                                            <span className="font-medium text-slate-800 truncate">{m.name}</span>
+                                            {m.id && (
+                                              <span className="font-mono text-[10px] font-semibold text-purple-700 bg-purple-50 px-1.5 py-0.2 rounded border border-purple-200 shrink-0">
+                                                {m.id}
+                                              </span>
+                                            )}
+                                          </div>
+                                          <span className="text-[11px] text-slate-500 mt-0.5">
+                                            {m.type} | {m.company || "Kho thuốc"} | Tồn: <strong className={m.stock > 0 ? "text-emerald-600" : "text-red-600"}>{m.stock ?? 100}</strong> {m.unit}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    )}
+                                    placeholder="-- Chọn theo tên hoặc Mã Thuốc --"
+                                    maxSuggestions={7}
+                                    className={`w-full px-2 py-1.5 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-slate-900 text-xs ${medInfo?.id ? "pr-14" : ""}`}
+                                    dropdownClassName="w-[360px] sm:w-[460px]"
+                                  />
+                                  {medInfo?.id && (
+                                    <span className="absolute right-1.5 top-1/2 -translate-y-1/2 font-mono text-[10px] font-semibold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200 pointer-events-none">
+                                      {medInfo.id}
+                                    </span>
+                                  )}
+                                </div>
                               </td>
                               <td className="px-1 py-1.5">
-                                <input type="number" min="1" value={med.medicineQuantity} onChange={e => updateMedLine(idx, "medicineQuantity", parseInt(e.target.value) || 1)} className="w-full px-1 py-1 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-slate-900 text-xs text-center" />
+                                <input
+                                  id={`med-qty-input-${idx}`}
+                                  type="number"
+                                  min="1"
+                                  value={med.medicineQuantity ?? ""}
+                                  onChange={e => updateMedLine(idx, "medicineQuantity", e.target.value === "" ? "" : (parseInt(e.target.value) || 0))}
+                                  onKeyDown={e => handleQtyKeyDown(idx, e)}
+                                  onFocus={e => e.target.select()}
+                                  className="w-full px-1 py-1 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-slate-900 text-xs text-center font-medium"
+                                  placeholder="1"
+                                  title="Số lượng thuốc (Nhấn Tab hoặc Enter để thêm thuốc tiếp theo, phím → để sang Cách dùng)"
+                                />
                               </td>
                               <td className="px-1 py-1.5">
                                 <input type="text" value={med.medicineUnit ?? medInfo?.unit ?? (med.medicineName ? "Viên" : "")} onChange={e => updateMedLine(idx, "medicineUnit", e.target.value)} className="w-full px-1 py-1 border border-slate-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-purple-500 text-slate-900 font-medium bg-white text-[11px]" placeholder="ĐV" />
@@ -713,12 +1031,12 @@ export default function DiagnosisPage() {
                               <td className="px-1 py-1.5">
                                 <div className="flex flex-col gap-1.5">
                                   <div className="flex items-center gap-1 text-[11px] text-slate-700 whitespace-nowrap">
-                                    Uống <input type="text" value={med.medDays || ""} onChange={e => updateMedLine(idx, "medDays", e.target.value)} className="w-8 px-1 py-1 border border-slate-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-purple-500 text-slate-900 font-medium bg-white" /> ngày,
-                                    mỗi ngày <input type="text" value={med.medTimes || ""} onChange={e => updateMedLine(idx, "medTimes", e.target.value)} className="w-8 px-1 py-1 border border-slate-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-purple-500 text-slate-900 font-medium bg-white" /> lần,
-                                    mỗi lần <input type="text" value={med.medAmount || ""} onChange={e => updateMedLine(idx, "medAmount", e.target.value)} className="w-8 px-1 py-1 border border-slate-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-purple-500 text-slate-900 font-medium bg-white" />
-                                    <input type="text" value={med.medCustomUnit ?? "viên"} onChange={e => updateMedLine(idx, "medCustomUnit", e.target.value)} className="w-10 px-1 py-1 border border-slate-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-purple-500 text-slate-900 font-medium bg-white" />
+                                    Uống mỗi lần <input id={`med-amount-input-${idx}`} type="text" value={med.medAmount || ""} onChange={e => updateMedLine(idx, "medAmount", e.target.value)} placeholder="1" className="w-9 px-1 py-1 border border-slate-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-purple-500 text-slate-900 font-medium bg-white" title="Số viên/lần (C)" />
+                                    <input id={`med-custom-unit-input-${idx}`} type="text" value={med.medCustomUnit ?? (med.medicineUnit || medInfo?.unit ? (med.medicineUnit || medInfo?.unit).toLowerCase() : "viên")} onChange={e => updateMedLine(idx, "medCustomUnit", e.target.value)} placeholder="viên" className="w-11 px-1 py-1 border border-slate-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-purple-500 text-slate-900 font-medium bg-white" /> –
+                                    mỗi ngày <input id={`med-times-input-${idx}`} type="text" value={med.medTimes || ""} onChange={e => updateMedLine(idx, "medTimes", e.target.value)} placeholder="1" className="w-9 px-1 py-1 border border-slate-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-purple-500 text-slate-900 font-medium bg-white" title="Số lần/ngày (B)" /> lần –
+                                    trong <input id={`med-days-input-${idx}`} type="text" value={med.medDays || ""} onChange={e => updateMedLine(idx, "medDays", e.target.value)} onKeyDown={e => handleDaysKeyDown(idx, e)} placeholder="3" className="w-9 px-1 py-1 border border-slate-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-purple-500 text-slate-900 font-medium bg-white" title="Số ngày uống (A) (Nhấn Enter để thêm thuốc tiếp theo)" /> ngày
                                   </div>
-                                  <input type="text" value={med.medicineNote || ""} onChange={e => updateMedLine(idx, "medicineNote", e.target.value)} className="w-full px-2 py-1 border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-purple-500 text-xs text-slate-900 bg-white placeholder:text-slate-400" placeholder="Ghi chú thêm (VD: Uống sau khi ăn...)" />
+                                  <input id={`med-note-input-${idx}`} type="text" value={med.medicineNote || ""} onChange={e => updateMedLine(idx, "medicineNote", e.target.value)} onKeyDown={e => handleEndRowKeyDown(idx, e)} className="w-full px-2 py-1 border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-purple-500 text-xs text-slate-900 bg-white placeholder:text-slate-400" placeholder="Ghi chú thêm (Nhấn Tab hoặc Enter để thêm thuốc tiếp theo)" />
                                 </div>
                               </td>
                               <td className="px-1 py-1.5 text-center">
@@ -743,8 +1061,9 @@ export default function DiagnosisPage() {
                 <textarea value={newDiag.notes} onChange={e => setNewDiag({ ...newDiag, notes: e.target.value })} rows={3} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 bg-white text-slate-900 text-sm resize-none" placeholder="Ghi chú thêm cho bệnh nhân..."></textarea>
               </div>
 
+              {error && <div className="text-red-500 text-sm font-medium mt-4">{error}</div>}
               <div className="flex justify-end gap-3 mt-6">
-                <button onClick={() => { setShowAddModal(false); setEditingDiagId(null); }} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors">Hủy</button>
+                <button onClick={() => { setShowAddModal(false); setEditingDiagId(null); setError(""); }} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors">Hủy</button>
                 <button onClick={handleSaveDiag} className="px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors">Lưu Lại</button>
               </div>
             </div>
@@ -762,38 +1081,48 @@ export default function DiagnosisPage() {
               </button>
 
               {/* Header Đơn Thuốc */}
-              <div className="text-center mb-8 mt-4">
-                <h2 className="text-3xl font-bold uppercase tracking-wider mb-2">Đơn Thuốc</h2>
-                <p className="text-sm text-slate-600">
-                  Mã đơn: <span className="font-medium">{viewingPrescription.id}</span> -
-                  Ngày khám: <span className="font-medium">{formatDateDisplay(viewingPrescription.date)}</span>
-                </p>
-                {viewingPrescription.doctorName && (
-                  <p className="text-lg text-slate-800 mt-2 font-medium">
-                    Bác sĩ: <span className="font-bold text-green-700 text-xl">{viewingPrescription.doctorName}</span>
-                  </p>
-                )}
+              <div className="text-center mb-8 mt-2 px-8">
+                <h3 className="text-base sm:text-lg font-bold uppercase tracking-wide text-slate-700 mb-1.5">
+                  PHÒNG KHÁM NHI BS NAM – BS PHỤNG
+                </h3>
+                <h2 className="text-3xl font-bold uppercase tracking-wider text-slate-900">
+                  ĐƠN THUỐC
+                </h2>
               </div>
 
               {/* Thông tin bệnh nhân */}
               {(() => {
                 const pt = savedPatients.find((p: any) => viewingPrescription.patientId ? p.id === viewingPrescription.patientId : p.name === viewingPrescription.patientName) || {};
+                const ptCode = getPatientCode(viewingPrescription);
+                const displayPtCode = ptCode !== "-" ? ptCode : (viewingPrescription.patientId || (pt as any).id || "");
                 return (
                   <div className="space-y-4 mb-8 text-base">
-                    <div className="flex gap-2 items-end">
-                      <span className="font-semibold whitespace-nowrap">Họ tên:</span>
-                      <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2">{viewingPrescription.patientName}</span>
-                    </div>
                     <div className="flex gap-6 items-end">
                       <div className="flex gap-2 items-end flex-1">
-                        <span className="font-semibold whitespace-nowrap">Ngày sinh:</span>
-                        <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2">
-                          {(pt as any).dob ? `${new Date((pt as any).dob).toLocaleDateString('vi-VN')} (${calculateAge((pt as any).dob)})` : ""}
+                        <span className="font-semibold whitespace-nowrap">Họ tên:</span>
+                        <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2 font-medium">
+                          <span style={{ position: "relative", top: "3px" }}>{viewingPrescription.patientName}</span>
                         </span>
                       </div>
-                      <div className="flex gap-2 items-end w-48">
+                      <div className="flex gap-2 items-end w-44 shrink-0">
+                        <span className="font-semibold whitespace-nowrap">Mã BN:</span>
+                        <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2 font-mono font-bold text-blue-700">
+                          <span style={{ position: "relative", top: "3px" }}>{displayPtCode}</span>
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex gap-6 items-end">
+                      <div className="flex gap-2 items-end flex-1 whitespace-nowrap">
+                        <span className="font-semibold whitespace-nowrap">Ngày sinh:</span>
+                        <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2 whitespace-nowrap">
+                          <span style={{ position: "relative", top: "3px" }}>
+                            {(pt as any).dob ? `${formatDisplayDate((pt as any).dob)} (${calculateAge((pt as any).dob)})` : ""}
+                          </span>
+                        </span>
+                      </div>
+                      <div className="flex gap-2 items-end w-44 shrink-0">
                         <span className="font-semibold whitespace-nowrap">Giới tính:</span>
-                        <span className="flex-1 border-b-2 border-dotted border-slate-300 flex items-center justify-around pb-1 text-sm">
+                        <span className="flex-1 border-b-2 border-dotted border-slate-300 flex items-center justify-around pb-1 text-sm whitespace-nowrap">
                           <label className="flex items-center gap-1"><input type="checkbox" className="w-3 h-3" readOnly checked={(pt as any).gender === "Nam"} /> Nam</label>
                           <label className="flex items-center gap-1"><input type="checkbox" className="w-3 h-3" readOnly checked={(pt as any).gender === "Nữ"} /> Nữ</label>
                         </span>
@@ -802,33 +1131,66 @@ export default function DiagnosisPage() {
                     <div className="flex gap-4 items-end flex-wrap">
                       <div className="flex gap-2 items-end">
                         <span className="font-semibold whitespace-nowrap">Cân nặng:</span>
-                        <span className="border-b-2 border-dotted border-slate-300 px-2 min-w-[50px]">{(pt as any).weight ? `${(pt as any).weight} kg` : ""}</span>
+                        <span className="border-b-2 border-dotted border-slate-300 px-2 min-w-[50px]">
+                          <span style={{ position: "relative", top: "3px" }}>
+                            {viewingPrescription.weight || (pt as any).weight ? `${viewingPrescription.weight || (pt as any).weight} kg` : ""}
+                          </span>
+                        </span>
                       </div>
                       <div className="flex gap-2 items-end">
                         <span className="font-semibold whitespace-nowrap">Chiều cao:</span>
-                        <span className="border-b-2 border-dotted border-slate-300 px-2 min-w-[50px]">{(pt as any).height ? `${(pt as any).height} cm` : ""}</span>
+                        <span className="border-b-2 border-dotted border-slate-300 px-2 min-w-[50px]">
+                          <span style={{ position: "relative", top: "3px" }}>
+                            {(pt as any).height ? `${(pt as any).height} cm` : ""}
+                          </span>
+                        </span>
                       </div>
                       <div className="flex gap-2 items-end">
                         <span className="font-semibold whitespace-nowrap">BMI:</span>
-                        <span className="border-b-2 border-dotted border-slate-300 px-2 min-w-[40px]">{(pt as any).weight && (pt as any).height ? calculateBMI((pt as any).weight, (pt as any).height) : ""}</span>
+                        <span className="border-b-2 border-dotted border-slate-300 px-2 min-w-[40px]">
+                          <span style={{ position: "relative", top: "3px" }}>
+                            {(() => {
+                              const curW = viewingPrescription.weight || (pt as any).weight;
+                              const curH = (pt as any).height;
+                              return curW && curH ? calculateBMI(curW, curH) : "";
+                            })()}
+                          </span>
+                        </span>
                       </div>
                       <div className="flex gap-2 items-end">
                         <span className="font-semibold whitespace-nowrap">NĐ:</span>
-                        <span className="border-b-2 border-dotted border-slate-300 px-2 min-w-[40px]">{(pt as any).temperature ? `${(pt as any).temperature} °C` : ""}</span>
+                        <span className="border-b-2 border-dotted border-slate-300 px-2 min-w-[40px]">
+                          <span style={{ position: "relative", top: "3px" }}>
+                            {(pt as any).temperature ? `${(pt as any).temperature} °C` : ""}
+                          </span>
+                        </span>
                       </div>
                     </div>
                     <div className="flex gap-2 items-end">
                       <span className="font-semibold whitespace-nowrap">Địa chỉ:</span>
-                      <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2">{(pt as any).address || ""}</span>
+                      <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2">
+                        <span style={{ position: "relative", top: "3px" }}>{(pt as any).address || ""}</span>
+                      </span>
                     </div>
                   </div>
                 );
               })()}
 
-              <div className="flex gap-2 items-end mb-6">
+              <div className="flex gap-2 items-end mb-3">
                 <span className="font-semibold whitespace-nowrap">Chẩn đoán:</span>
-                <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2 font-medium">{viewingPrescription.diagnosis}</span>
+                <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2 font-medium">
+                  <span style={{ position: "relative", top: "3px" }}>{viewingPrescription.diagnosis}</span>
+                </span>
               </div>
+
+              {viewingPrescription.medicalHistory && (
+                <div className="flex gap-2 items-end mb-6">
+                  <span className="font-semibold whitespace-nowrap">Bệnh sử – Khám:</span>
+                  <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2">
+                    <span style={{ position: "relative", top: "3px" }}>{viewingPrescription.medicalHistory}</span>
+                  </span>
+                </div>
+              )}
 
               {/* Danh sách thuốc */}
               <div className="mb-10 min-h-[200px]">
@@ -842,31 +1204,59 @@ export default function DiagnosisPage() {
                       <div className="pl-6 text-slate-700 flex flex-wrap gap-y-2 items-end">
                         {item.notes && <span className="w-full text-slate-600 italic mb-1">- Ghi chú: {item.notes}</span>}
                         <span className="whitespace-nowrap">- Số lượng:</span>
-                        <span className="border-b-2 border-dotted border-slate-300 min-w-[60px] text-center inline-block font-medium px-2">{item.quantity}</span>
+                        <span className="border-b-2 border-dotted border-slate-300 min-w-[60px] text-center inline-block font-medium px-2">
+                          <span style={{ position: "relative", top: "3px" }}>{item.quantity}</span>
+                        </span>
                         <span className="mr-6">{item.unit}</span>
 
-                        <span className="whitespace-nowrap">Uống {item.medDays || "...."} ngày, mỗi ngày {item.medTimes || "...."} lần, mỗi lần {item.medAmount || "...."} {item.medCustomUnit}.</span>
+                        <span className="whitespace-nowrap">Uống mỗi lần {item.medAmount || "...."} {item.medCustomUnit || item.unit || "viên"}, mỗi ngày {item.medTimes || "...."} lần, trong {item.medDays || "...."} ngày.</span>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Tiền dịch vụ & Ghi chú */}
-              <div className="space-y-4 mb-10 text-base">
+              {/* Ghi chú & Tái khám */}
+              <div className="space-y-4 mb-6 text-base">
                 <div className="flex gap-2 items-end">
-                  <span className="font-bold whitespace-nowrap">Tiền dịch vụ:</span>
-                  <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2 font-bold text-lg">
-                    {(Number(viewingPrescription.serviceFee) || 80000).toLocaleString("vi-VN")} &#8363;
+                  <span className="font-bold whitespace-nowrap">Ghi chú:</span>
+                  <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2">
+                    <span style={{ position: "relative", top: "3px" }}>{viewingPrescription.notes}</span>
                   </span>
                 </div>
                 <div className="flex gap-2 items-end">
-                  <span className="font-bold whitespace-nowrap">Ghi chú:</span>
-                  <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2">{viewingPrescription.notes}</span>
+                  <span className="font-bold whitespace-nowrap text-red-600">Tái khám:</span>
+                  <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2 text-slate-800 font-medium">
+                    <span style={{ position: "relative", top: "3px" }}>{viewingPrescription.followUpDate}</span>
+                  </span>
                 </div>
-                <div className="flex gap-2 items-end uppercase">
-                  <span className="font-bold whitespace-nowrap">Tái khám:</span>
-                  <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2">{viewingPrescription.followUpDate}</span>
+              </div>
+
+              {/* Ngày khám & Bác sĩ ký tên ở góc phải dưới cùng */}
+              <div className="flex justify-end mt-6 mb-8">
+                <div className="text-center min-w-[240px]">
+                  <p className="text-sm italic text-slate-600 mb-1">
+                    {(() => {
+                      const formatted = formatDateDisplay(viewingPrescription.date);
+                      const parts = formatted ? formatted.split(" ")[0].split("-") : null;
+                      if (parts && parts.length === 3) {
+                        return `Ngày ${parts[0]} tháng ${parts[1]} năm ${parts[2]}`;
+                      }
+                      return formatted ? `Ngày khám: ${formatted}` : "Ngày .... tháng .... năm 20...";
+                    })()}
+                  </p>
+                  <p className="font-bold uppercase text-slate-800 text-sm tracking-wide">
+                    Bác sĩ khám bệnh
+                  </p>
+                  <p className="text-xs italic text-slate-500">
+                    (Ký, ghi rõ họ tên)
+                  </p>
+                  <div className="h-20 flex items-end justify-center">
+                    {/* Khoảng trống để ký tên */}
+                  </div>
+                  <p className="font-bold text-slate-900 text-base">
+                    {viewingPrescription.doctorName || ""}
+                  </p>
                 </div>
               </div>
               {/* Các nút hành động (ẩn khi in) */}
@@ -883,7 +1273,37 @@ export default function DiagnosisPage() {
 
           </div>
         </div>
-      )}</div>
+      )}
+
+      {/* Modal Xác nhận Xóa */}
+      {deletingDiag && (
+        <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50 p-4" onClick={() => setDeletingDiag(null)}>
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 text-center" onClick={e => e.stopPropagation()}>
+            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-4">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-800 mb-2">Xác nhận xóa phiếu khám</h3>
+            <p className="text-slate-600 text-sm mb-6">
+              Bạn có chắc chắn muốn xóa phiếu khám của <span className="font-semibold text-slate-800">{deletingDiag.patientName}</span> ({formatDateDisplay(deletingDiag.date)}) không? Thuốc đã kê sẽ được hoàn lại vào kho.
+            </p>
+            <div className="flex justify-center gap-3">
+              <button
+                onClick={() => setDeletingDiag(null)}
+                className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                onClick={confirmDeleteDiag}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors shadow-sm"
+              >
+                Xóa phiếu khám
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

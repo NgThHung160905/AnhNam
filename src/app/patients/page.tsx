@@ -3,12 +3,15 @@
 import { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, addDoc, query, orderBy } from "firebase/firestore"; // Will use firestore in real app
-import { Plus, Search, UserPlus, Edit2, Trash2, Activity, UserMinus, UserCheck, AlertTriangle } from "lucide-react";
+import { Plus, Search, UserPlus, Edit2, Trash2, Activity, UserMinus, UserCheck, AlertTriangle, ClipboardList } from "lucide-react";
+import PatientMedicalSummaryModal from "@/components/PatientMedicalSummaryModal";
+import { formatPatientCode } from "@/lib/medicalSummaryService";
+import DatePicker, { calculateAge, formatDisplayDate } from "@/components/DatePicker";
 
 // Dummy data for preview
 const DUMMY_PATIENTS = [
-  { id: "BN001", name: "Nguyễn Văn A", gender: "Nam", phone: "0901234567", address: "Hà Nội", dob: "2020-01-01", weight: "15", height: "100", temperature: "37" },
-  { id: "BN002", name: "Trần Thị B", gender: "Nữ", phone: "0987654321", address: "TP HCM", dob: "2019-05-15", weight: "20", height: "115", temperature: "37" },
+  { id: "0001", name: "Nguyễn Văn A", gender: "Nam", phone: "0901234567", address: "Hà Nội", dob: "2020-01-01", weight: "15", height: "100", temperature: "37" },
+  { id: "0002", name: "Trần Thị B", gender: "Nữ", phone: "0987654321", address: "TP HCM", dob: "2019-05-15", weight: "20", height: "115", temperature: "37" },
 ];
 
 export default function PatientsPage() {
@@ -18,34 +21,12 @@ export default function PatientsPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newPatient, setNewPatient] = useState({ name: "", phone: "", gender: "Nam", address: "", dob: "", weight: "", height: "", temperature: "37" });
   const [editingPatientId, setEditingPatientId] = useState<string | null>(null);
+  const [deletingPatient, setDeletingPatient] = useState<any | null>(null);
+  const [summaryPatient, setSummaryPatient] = useState<any | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [error, setError] = useState("");
   const itemsPerPage = 10;
-
-  const calculateAge = (dob: string) => {
-    if (!dob) return "";
-    const birthDate = new Date(dob);
-    const today = new Date();
-    if (isNaN(birthDate.getTime())) return "";
-
-    let months = (today.getFullYear() - birthDate.getFullYear()) * 12;
-    months -= birthDate.getMonth();
-    months += today.getMonth();
-
-    if (today.getDate() < birthDate.getDate()) {
-      months--;
-    }
-
-    if (months < 0) return "Chưa sinh";
-    if (months === 0) return "Dưới 1 tháng tuổi";
-
-    const years = Math.floor(months / 12);
-    const remainingMonths = months % 12;
-
-    if (years === 0) return `${months} tháng tuổi`;
-    if (remainingMonths === 0) return `${months} tháng (${years} tuổi)`;
-    return `${months} tháng (${years} tuổi ${remainingMonths} tháng)`;
-  };
 
   const calculateBMI = (weight: string, height: string) => {
     const w = parseFloat(weight);
@@ -67,18 +48,18 @@ export default function PatientsPage() {
 
   const handleSavePatient = () => {
     if (!newPatient.name.trim() || !newPatient.phone.trim()) {
-      alert("Vui lòng nhập đầy đủ Họ và tên và Số điện thoại!");
+      setError("Vui lòng nhập đầy đủ Họ, Tên và Số Điện Thoại!");
       return;
     }
+    setError("");
 
     if (editingPatientId) {
       setPatients(patients.map(p => p.id === editingPatientId ? { id: editingPatientId, ...newPatient } : p));
     } else {
-      // Generate new ID like BN003
-      const nextIdNum = patients.length > 0
-        ? Math.max(...patients.map(p => parseInt(p.id.replace('BN', '')))) + 1
-        : 1;
-      const newId = `BN${String(nextIdNum).padStart(3, '0')}`;
+      // Generate new ID like 0001, 0002 safely
+      const nums = patients.map(p => parseInt(p.id.replace(/\D/g, ''))).filter(n => !isNaN(n));
+      const nextIdNum = nums.length > 0 ? Math.max(...nums) + 1 : 1;
+      const newId = String(nextIdNum).padStart(4, '0');
 
       setPatients([{ id: newId, ...newPatient }, ...patients]);
     }
@@ -86,28 +67,46 @@ export default function PatientsPage() {
     setNewPatient({ name: "", phone: "", gender: "Nam", address: "", dob: "", weight: "", height: "", temperature: "37" });
     setShowAddModal(false);
     setEditingPatientId(null);
+    setError("");
     localStorage.removeItem("khambenh_draft_patient");
   };
 
   const handleEditClick = (patient: any) => {
     setEditingPatientId(patient.id);
-    setNewPatient({ 
-      name: patient.name || "", 
-      phone: patient.phone || "", 
-      gender: patient.gender || "Nam", 
+    setNewPatient({
+      name: patient.name || "",
+      phone: patient.phone || "",
+      gender: patient.gender || "Nam",
       address: patient.address || "",
-      dob: patient.dob || "",
+      dob: patient.dob ? (formatDisplayDate(patient.dob).replace(/\//g, "-")) : "",
       weight: patient.weight || "",
       height: patient.height || "",
       temperature: patient.temperature || "37"
     });
+    setError("");
     setShowAddModal(true);
   };
 
-  const handleDeletePatient = (id: string) => {
-    if (window.confirm("Bạn có chắc chắn muốn xóa bệnh nhân này không?")) {
-      setPatients(patients.filter(p => p.id !== id));
+  const handleDeletePatient = (patient: any) => {
+    setDeletingPatient(patient);
+  };
+
+  const confirmDeletePatient = () => {
+    if (deletingPatient) {
+      setPatients(prev => {
+        const updated = prev.filter(p => p.id !== deletingPatient.id);
+        const newTotal = Math.ceil(updated.length / itemsPerPage);
+        if (currentPage > newTotal && newTotal > 0) {
+          setCurrentPage(newTotal);
+        }
+        return updated;
+      });
+      setDeletingPatient(null);
     }
+  };
+
+  const onViewMedicalSummary = (patient: any) => {
+    setSummaryPatient(patient);
   };
 
   // Load and save data to localStorage to prevent data loss on refresh
@@ -153,11 +152,12 @@ export default function PatientsPage() {
   };
 
   const filteredPatients = patients.filter(p => {
-    return matchSearch(p.name, searchTerm) || matchSearch(p.id, searchTerm);
+    return matchSearch(p.name, searchTerm) || matchSearch(p.id, searchTerm) || matchSearch(formatPatientCode(p.id), searchTerm);
   });
 
   const totalPages = Math.ceil(filteredPatients.length / itemsPerPage);
-  const paginatedPatients = filteredPatients.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const safeCurrentPage = totalPages > 0 ? Math.min(currentPage, totalPages) : 1;
+  const paginatedPatients = filteredPatients.slice((safeCurrentPage - 1) * itemsPerPage, safeCurrentPage * itemsPerPage);
 
   return (
     <div className="space-y-6">
@@ -175,6 +175,7 @@ export default function PatientsPage() {
             } else {
               setNewPatient({ name: "", phone: "", gender: "Nam", address: "", dob: "", weight: "", height: "", temperature: "37" });
             }
+            setError("");
             setShowAddModal(true);
           }}
           className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors font-medium shadow-sm shadow-blue-500/20"
@@ -216,22 +217,41 @@ export default function PatientsPage() {
             <tbody className="divide-y divide-slate-200">
               {paginatedPatients.map((patient) => (
                 <tr key={patient.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-6 py-4 font-medium text-blue-600">{patient.id}</td>
+                  <td className="px-6 py-4 font-medium text-blue-600 font-mono">{formatPatientCode(patient.id)}</td>
                   <td className="px-6 py-4 font-medium text-slate-800">{patient.name}</td>
                   <td className="px-6 py-4 text-slate-600">{patient.gender}</td>
                   <td className="px-6 py-4 text-slate-600">{patient.phone}</td>
                   <td className="px-6 py-4 text-slate-600">{patient.address}</td>
                   <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
+                    <div className="flex items-center justify-end gap-1.5">
+                      <div className="relative group inline-block">
+                        <button
+                          onClick={() => onViewMedicalSummary(patient)}
+                          className={`p-1.5 rounded-lg transition-colors flex items-center justify-center cursor-pointer ${
+                            patient.gender?.toLowerCase().includes("nữ") || patient.gender?.toLowerCase().includes("female")
+                              ? "text-pink-600 hover:text-pink-700 hover:bg-pink-50"
+                              : "text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                          }`}
+                          title="Tóm tắt bệnh án"
+                          aria-label="Tóm tắt bệnh án"
+                        >
+                          <ClipboardList className="w-4 h-4" />
+                        </button>
+                        <span className="pointer-events-none absolute bottom-full right-0 mb-1.5 hidden group-hover:block z-30 px-2 py-1 text-xs font-medium text-white bg-slate-800 rounded shadow-md whitespace-nowrap">
+                          Tóm tắt bệnh án
+                        </span>
+                      </div>
                       <button
                         onClick={() => handleEditClick(patient)}
-                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                        title="Chỉnh sửa thông tin"
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => handleDeletePatient(patient.id)}
-                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        onClick={() => handleDeletePatient(patient)}
+                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                        title="Xóa bệnh nhân"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -302,14 +322,17 @@ export default function PatientsPage() {
                     <div className="flex-1 w-full">
                       <label className="block text-sm font-medium text-slate-700 mb-1">Ngày tháng năm sinh</label>
                       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-                        <input
-                          type="date"
-                          value={newPatient.dob}
-                          onChange={(e) => setNewPatient({ ...newPatient, dob: e.target.value })}
-                          className="w-full sm:w-auto flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-900"
-                        />
+                        <div className="w-full sm:w-auto flex-1">
+                          <DatePicker
+                            value={newPatient.dob}
+                            onChange={(val) => setNewPatient({ ...newPatient, dob: val })}
+                            placeholder="DD-MM-YYYY"
+                            align="left"
+                            minYear={1920}
+                          />
+                        </div>
                         {newPatient.dob && calculateAge(newPatient.dob) && (
-                          <span className="text-sm font-medium text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100 whitespace-nowrap">
+                          <span className="text-sm font-medium text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200 whitespace-nowrap">
                             {calculateAge(newPatient.dob)}
                           </span>
                         )}
@@ -387,13 +410,52 @@ export default function PatientsPage() {
                   />
                 </div>
               </div>
+              {error && <div className="text-red-500 text-sm font-medium">{error}</div>}
               <div className="flex justify-end gap-3 mt-6">
-                <button onClick={() => { setShowAddModal(false); setEditingPatientId(null); }} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors">Hủy</button>
+                <button onClick={() => { setShowAddModal(false); setEditingPatientId(null); setError(""); }} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors">Hủy</button>
                 <button onClick={handleSavePatient} className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors">Lưu lại</button>
               </div>
             </div>
           </div>
         </div>
+      )}
+      {/* Modal Xác nhận Xóa */}
+      {deletingPatient && (
+        <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50 p-4" onClick={() => setDeletingPatient(null)}>
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 text-center" onClick={e => e.stopPropagation()}>
+            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-4">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-800 mb-2">Xác nhận xóa bệnh nhân</h3>
+            <p className="text-slate-600 text-sm mb-6">
+              Bạn có chắc chắn muốn xóa bệnh nhân <span className="font-semibold text-slate-800">{deletingPatient.name}</span> ({formatPatientCode(deletingPatient.id)}) không? Hành động này không thể hoàn tác.
+            </p>
+            <div className="flex justify-center gap-3">
+              <button
+                onClick={() => setDeletingPatient(null)}
+                className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                onClick={confirmDeletePatient}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors shadow-sm"
+              >
+                Xóa bệnh nhân
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Tóm Tắt Quá Trình Khám Bệnh */}
+      {summaryPatient && (
+        <PatientMedicalSummaryModal
+          isOpen={!!summaryPatient}
+          patientId={summaryPatient.id}
+          patientData={summaryPatient}
+          onClose={() => setSummaryPatient(null)}
+        />
       )}
     </div>
   );
