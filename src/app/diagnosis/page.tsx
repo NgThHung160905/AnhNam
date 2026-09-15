@@ -53,26 +53,19 @@ const Autocomplete = ({ id, value, onChange, onSelect, options, getOptionLabel, 
             e.preventDefault();
             setHighlightedIndex(prev => Math.max(prev - 1, 0));
           } else if (e.key === "Enter") {
+            e.preventDefault();
             const targetOpt = highlightedIndex >= 0 && highlightedIndex < filteredOptions.length
               ? filteredOptions[highlightedIndex]
               : (filteredOptions.length > 0 ? filteredOptions[0] : null);
             if (targetOpt) {
-              e.preventDefault();
               onChange(getOptionLabel(targetOpt));
               if (onSelect) onSelect(targetOpt);
-              setIsOpen(false);
+            } else {
+              if (onSelect) onSelect({ name: value });
             }
+            setIsOpen(false);
           } else if (e.key === "Tab") {
-            if (isOpen && filteredOptions.length > 0 && !e.shiftKey) {
-              const targetOpt = highlightedIndex >= 0 && highlightedIndex < filteredOptions.length
-                ? filteredOptions[highlightedIndex]
-                : filteredOptions[0];
-              if (targetOpt) {
-                onChange(getOptionLabel(targetOpt));
-                if (onSelect) onSelect(targetOpt);
-                setIsOpen(false);
-              }
-            }
+            setIsOpen(false);
           } else if (e.key === "Escape") {
             setIsOpen(false);
           }
@@ -128,7 +121,7 @@ const DUMMY_DOCTORS = [
 ];
 
 export default function DiagnosisPage() {
-  const [diagnoses, setDiagnoses] = useState<any[]>(DUMMY_DIAGNOSIS);
+  const [diagnoses, setDiagnoses] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [highlightedDoctorIndex, setHighlightedDoctorIndex] = useState(-1);
@@ -154,8 +147,20 @@ export default function DiagnosisPage() {
   const [editingDiagId, setEditingDiagId] = useState<number | null>(null);
   const [deletingDiag, setDeletingDiag] = useState<any | null>(null);
   const [error, setError] = useState("");
+  // Tự động nạp chi tiết đơn thuốc ngay nếu có ca khám được chuyển từ trang Doanh Thu
+  const [viewingPrescription, setViewingPrescription] = useState<any>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const direct = sessionStorage.getItem("khambenh_direct_view_prescription");
+        if (direct) {
+          const parsed = JSON.parse(direct);
+          if (parsed && typeof parsed === "object") return parsed;
+        }
+      } catch (e) {}
+    }
+    return null;
+  });
   const [isLoaded, setIsLoaded] = useState(false);
-  const [viewingPrescription, setViewingPrescription] = useState<any>(null);
   const [availableMedicines, setAvailableMedicines] = useState<any[]>([
     { id: "T001", name: "Paracetamol 500mg", type: "Giảm đau hạ sốt", company: "Dược Hậu Giang", price: "5,000", unit: "Viên", stock: 100 },
     { id: "T002", name: "Amoxicillin 500mg", type: "Kháng sinh", company: "Dược Hậu Giang", price: "10,000", unit: "Viên", stock: 200 },
@@ -223,7 +228,24 @@ export default function DiagnosisPage() {
 
   useEffect(() => {
     const saved = localStorage.getItem("khambenh_diagnosis");
-    if (saved) { try { setDiagnoses(JSON.parse(saved)); } catch (e) { } }
+    const sampleNames = [
+      "nguyen van a", "nguyễn văn a", "trần bảo ngọc", "tran thi b", "trần thị b",
+      "lê minh khang", "phạm gia hưng", "hoàng yến vy", "đỗ quốc bảo", "vũ tuấn kiệt"
+    ];
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          const cleaned = parsed.filter(d => !sampleNames.includes((d.patientName || "").trim().toLowerCase()));
+          setDiagnoses(cleaned);
+          if (cleaned.length !== parsed.length) {
+            localStorage.setItem("khambenh_diagnosis", JSON.stringify(cleaned));
+          }
+        }
+      } catch (e) { setDiagnoses([]); }
+    } else {
+      setDiagnoses([]);
+    }
     const savedMeds = localStorage.getItem("khambenh_medicines");
     if (savedMeds) { try { setAvailableMedicines(JSON.parse(savedMeds)); } catch (e) { } }
     const savedDoctors = localStorage.getItem("khambenh_doctors");
@@ -232,6 +254,79 @@ export default function DiagnosisPage() {
     if (savedPts) { try { setSavedPatients(JSON.parse(savedPts)); } catch (e) { } }
     setIsLoaded(true);
   }, []);
+
+  // Tự động mở chi tiết đơn thuốc khi được điều hướng từ "Tổng kết Doanh Thu" hoặc qua link
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    // 1. Ưu tiên đối tượng phiếu khám trực tiếp từ sessionStorage
+    const direct = sessionStorage.getItem("khambenh_direct_view_prescription");
+    if (direct) {
+      try {
+        const parsed = JSON.parse(direct);
+        if (parsed && typeof parsed === "object") {
+          setViewingPrescription(parsed);
+          sessionStorage.removeItem("khambenh_direct_view_prescription");
+          sessionStorage.removeItem("khambenh_view_diag_id");
+          sessionStorage.removeItem("khambenh_view_patient_name");
+          sessionStorage.removeItem("khambenh_view_patient_id");
+          return;
+        }
+      } catch (e) {}
+    }
+
+    // 2. Tìm theo ID hoặc Tên bệnh nhân từ URL hoặc sessionStorage
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetDiagId = urlParams.get("diagId") || sessionStorage.getItem("khambenh_view_diag_id");
+    const targetPatientName = urlParams.get("patientName") || sessionStorage.getItem("khambenh_view_patient_name");
+    const targetPatientId = urlParams.get("patientId") || sessionStorage.getItem("khambenh_view_patient_id");
+
+    if (targetDiagId || targetPatientName || targetPatientId) {
+      let matched: any = null;
+      if (diagnoses.length > 0) {
+        if (targetDiagId) {
+          matched = diagnoses.find(d => String(d.id) === String(targetDiagId));
+        }
+        if (!matched && targetPatientId) {
+          matched = diagnoses.find(d => String(d.patientId) === String(targetPatientId));
+        }
+        if (!matched && targetPatientName) {
+          matched = diagnoses.find(d => (d.patientName || "").trim().toLowerCase() === targetPatientName!.trim().toLowerCase());
+        }
+      }
+
+      // Thử tìm trong localStorage nếu diagnoses state chưa kịp nạp
+      if (!matched) {
+        try {
+          const localRaw = localStorage.getItem("khambenh_diagnosis");
+          if (localRaw) {
+            const localDiags = JSON.parse(localRaw);
+            if (Array.isArray(localDiags)) {
+              if (targetDiagId) {
+                matched = localDiags.find(d => String(d.id) === String(targetDiagId));
+              }
+              if (!matched && targetPatientId) {
+                matched = localDiags.find(d => String(d.patientId) === String(targetPatientId));
+              }
+              if (!matched && targetPatientName) {
+                matched = localDiags.find(d => (d.patientName || "").trim().toLowerCase() === targetPatientName!.trim().toLowerCase());
+              }
+            }
+          }
+        } catch (e) {}
+      }
+
+      if (matched) {
+        setViewingPrescription(matched);
+        sessionStorage.removeItem("khambenh_view_diag_id");
+        sessionStorage.removeItem("khambenh_view_patient_name");
+        sessionStorage.removeItem("khambenh_view_patient_id");
+        // Dọn dẹp query parameters trên thanh URL mà không reload trang
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, "", cleanUrl);
+      }
+    }
+  }, [isLoaded, diagnoses]);
 
   useEffect(() => {
     if (isLoaded) localStorage.setItem("khambenh_diagnosis", JSON.stringify(diagnoses));
@@ -532,25 +627,34 @@ export default function DiagnosisPage() {
     });
   };
   const addMedLine = () => {
-    const nextIdx = newDiag.medicines.length;
-    setNewDiag((prev: any) => ({
-      ...prev,
-      medicines: [...prev.medicines, { ...EMPTY_MED_LINE }]
-    }));
-    setTimeout(() => {
-      const el = document.getElementById(`med-name-input-${nextIdx}`);
-      if (el) el.focus();
-    }, 60);
+    setNewDiag((prev: any) => {
+      const nextIdx = prev.medicines.length;
+      setTimeout(() => {
+        const el = document.getElementById(`med-name-input-${nextIdx}`);
+        if (el) {
+          el.focus();
+        } else {
+          setTimeout(() => {
+            const retryEl = document.getElementById(`med-name-input-${nextIdx}`);
+            if (retryEl) retryEl.focus();
+          }, 80);
+        }
+      }, 60);
+
+      return {
+        ...prev,
+        medicines: [...prev.medicines, { ...EMPTY_MED_LINE }]
+      };
+    });
   };
 
   const handleQtyKeyDown = (idx: number, e: React.KeyboardEvent) => {
-    if ((e.key === "Tab" && !e.shiftKey) || e.key === "Enter") {
+    if (e.key === "Enter") {
       e.preventDefault();
-      if (idx === newDiag.medicines.length - 1) {
-        addMedLine();
-      } else {
-        const nextInput = document.getElementById(`med-name-input-${idx + 1}`);
-        if (nextInput) nextInput.focus();
+      const amountInput = document.getElementById(`med-amount-input-${idx}`) as HTMLInputElement;
+      if (amountInput) {
+        amountInput.focus();
+        amountInput.select();
       }
     } else if (e.key === "ArrowRight") {
       const amountInput = document.getElementById(`med-amount-input-${idx}`);
@@ -562,7 +666,7 @@ export default function DiagnosisPage() {
   };
 
   const handleEndRowKeyDown = (idx: number, e: React.KeyboardEvent) => {
-    if ((e.key === "Tab" && !e.shiftKey) || e.key === "Enter") {
+    if (e.key === "Enter") {
       e.preventDefault();
       if (idx === newDiag.medicines.length - 1) {
         addMedLine();
@@ -580,7 +684,11 @@ export default function DiagnosisPage() {
         addMedLine();
       } else {
         const nextInput = document.getElementById(`med-name-input-${idx + 1}`);
-        if (nextInput) nextInput.focus();
+        if (nextInput) {
+          nextInput.focus();
+        } else {
+          addMedLine();
+        }
       }
     }
   };
@@ -922,9 +1030,9 @@ export default function DiagnosisPage() {
                     </button>
                   </div>
 
-                  <div className="flex items-center gap-2 text-xs text-purple-700 bg-purple-50/80 px-3 py-1.5 rounded-lg border border-purple-200 mb-3 whitespace-nowrap">
-                    <span className="font-bold text-purple-900 whitespace-nowrap">💡 Phím Tắt:</span>
-                    <span className="whitespace-nowrap text-purple-800">Nhấn <strong>Tab</strong> hoặc <strong>Enter</strong> để thêm thuốc tiếp theo</span>
+                  <div className="flex items-center gap-2 text-xs text-purple-700 bg-purple-50/80 px-3 py-1.5 rounded-lg border border-purple-200 mb-3 overflow-x-auto">
+                    <span className="font-bold text-purple-900 shrink-0">💡 Phím Tắt:</span>
+                    <span className="text-purple-800 shrink-0">Nhấn <strong>Enter</strong>: Tên thuốc ➔ Uống mỗi lần ➔ Mỗi ngày ➔ Trong ngày ➔ Tự thêm thuốc mới</span>
                   </div>
 
                   <div className="border border-slate-200 rounded-lg bg-white">
@@ -962,12 +1070,14 @@ export default function DiagnosisPage() {
                                       }
                                     }}
                                     onSelect={(selectedMed: any) => {
-                                      updateMedLine(idx, "medicineName", selectedMed.name);
+                                      if (selectedMed?.name) {
+                                        updateMedLine(idx, "medicineName", selectedMed.name);
+                                      }
                                       setTimeout(() => {
-                                        const qtyInput = document.getElementById(`med-qty-input-${idx}`) as HTMLInputElement;
-                                        if (qtyInput) {
-                                          qtyInput.focus();
-                                          qtyInput.select();
+                                        const amountInput = document.getElementById(`med-amount-input-${idx}`) as HTMLInputElement;
+                                        if (amountInput) {
+                                          amountInput.focus();
+                                          amountInput.select();
                                         }
                                       }, 60);
                                     }}
@@ -1022,7 +1132,7 @@ export default function DiagnosisPage() {
                                   onFocus={e => e.target.select()}
                                   className="w-full px-1 py-1 border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-slate-900 text-xs text-center font-medium"
                                   placeholder="1"
-                                  title="Số lượng thuốc (Nhấn Tab hoặc Enter để thêm thuốc tiếp theo, phím → để sang Cách dùng)"
+                                  title="Số lượng thuốc (Tự động tính theo liều dùng, nhấn Enter để sang Cách dùng)"
                                 />
                               </td>
                               <td className="px-1 py-1.5">
@@ -1031,12 +1141,86 @@ export default function DiagnosisPage() {
                               <td className="px-1 py-1.5">
                                 <div className="flex flex-col gap-1.5">
                                   <div className="flex items-center gap-1 text-[11px] text-slate-700 whitespace-nowrap">
-                                    Uống mỗi lần <input id={`med-amount-input-${idx}`} type="text" value={med.medAmount || ""} onChange={e => updateMedLine(idx, "medAmount", e.target.value)} placeholder="1" className="w-9 px-1 py-1 border border-slate-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-purple-500 text-slate-900 font-medium bg-white" title="Số viên/lần (C)" />
-                                    <input id={`med-custom-unit-input-${idx}`} type="text" value={med.medCustomUnit ?? (med.medicineUnit || medInfo?.unit ? (med.medicineUnit || medInfo?.unit).toLowerCase() : "viên")} onChange={e => updateMedLine(idx, "medCustomUnit", e.target.value)} placeholder="viên" className="w-11 px-1 py-1 border border-slate-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-purple-500 text-slate-900 font-medium bg-white" /> –
-                                    mỗi ngày <input id={`med-times-input-${idx}`} type="text" value={med.medTimes || ""} onChange={e => updateMedLine(idx, "medTimes", e.target.value)} placeholder="1" className="w-9 px-1 py-1 border border-slate-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-purple-500 text-slate-900 font-medium bg-white" title="Số lần/ngày (B)" /> lần –
-                                    trong <input id={`med-days-input-${idx}`} type="text" value={med.medDays || ""} onChange={e => updateMedLine(idx, "medDays", e.target.value)} onKeyDown={e => handleDaysKeyDown(idx, e)} placeholder="3" className="w-9 px-1 py-1 border border-slate-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-purple-500 text-slate-900 font-medium bg-white" title="Số ngày uống (A) (Nhấn Enter để thêm thuốc tiếp theo)" /> ngày
+                                    Uống mỗi lần <input
+                                      id={`med-amount-input-${idx}`}
+                                      type="text"
+                                      value={med.medAmount || ""}
+                                      onChange={e => updateMedLine(idx, "medAmount", e.target.value)}
+                                      onKeyDown={e => {
+                                        if (e.key === "Enter") {
+                                          e.preventDefault();
+                                          const timesInput = document.getElementById(`med-times-input-${idx}`) as HTMLInputElement;
+                                          if (timesInput) {
+                                            timesInput.focus();
+                                            timesInput.select();
+                                          }
+                                        }
+                                      }}
+                                      onFocus={e => e.target.select()}
+                                      placeholder="1"
+                                      className="w-9 px-1 py-1 border border-slate-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-purple-500 text-slate-900 font-medium bg-white"
+                                      title="Số viên/lần (C) - Nhấn Enter để sang Mỗi ngày"
+                                    />
+                                    <input
+                                      id={`med-custom-unit-input-${idx}`}
+                                      type="text"
+                                      value={med.medCustomUnit ?? (med.medicineUnit || medInfo?.unit ? (med.medicineUnit || medInfo?.unit).toLowerCase() : "viên")}
+                                      onChange={e => updateMedLine(idx, "medCustomUnit", e.target.value)}
+                                      onKeyDown={e => {
+                                        if (e.key === "Enter") {
+                                          e.preventDefault();
+                                          const timesInput = document.getElementById(`med-times-input-${idx}`) as HTMLInputElement;
+                                          if (timesInput) {
+                                            timesInput.focus();
+                                            timesInput.select();
+                                          }
+                                        }
+                                      }}
+                                      onFocus={e => e.target.select()}
+                                      placeholder="viên"
+                                      className="w-11 px-1 py-1 border border-slate-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-purple-500 text-slate-900 font-medium bg-white"
+                                    /> –
+                                    mỗi ngày <input
+                                      id={`med-times-input-${idx}`}
+                                      type="text"
+                                      value={med.medTimes || ""}
+                                      onChange={e => updateMedLine(idx, "medTimes", e.target.value)}
+                                      onKeyDown={e => {
+                                        if (e.key === "Enter") {
+                                          e.preventDefault();
+                                          const daysInput = document.getElementById(`med-days-input-${idx}`) as HTMLInputElement;
+                                          if (daysInput) {
+                                            daysInput.focus();
+                                            daysInput.select();
+                                          }
+                                        }
+                                      }}
+                                      onFocus={e => e.target.select()}
+                                      placeholder="1"
+                                      className="w-9 px-1 py-1 border border-slate-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-purple-500 text-slate-900 font-medium bg-white"
+                                      title="Số lần/ngày (B) - Nhấn Enter để sang Trong ngày"
+                                    /> lần –
+                                    trong <input
+                                      id={`med-days-input-${idx}`}
+                                      type="text"
+                                      value={med.medDays || ""}
+                                      onChange={e => updateMedLine(idx, "medDays", e.target.value)}
+                                      onKeyDown={e => handleDaysKeyDown(idx, e)}
+                                      onFocus={e => e.target.select()}
+                                      placeholder="3"
+                                      className="w-9 px-1 py-1 border border-slate-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-purple-500 text-slate-900 font-medium bg-white"
+                                      title="Số ngày uống (A) (Nhấn Enter để tự thêm thuốc mới)"
+                                    /> ngày
                                   </div>
-                                  <input id={`med-note-input-${idx}`} type="text" value={med.medicineNote || ""} onChange={e => updateMedLine(idx, "medicineNote", e.target.value)} onKeyDown={e => handleEndRowKeyDown(idx, e)} className="w-full px-2 py-1 border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-purple-500 text-xs text-slate-900 bg-white placeholder:text-slate-400" placeholder="Ghi chú thêm (Nhấn Tab hoặc Enter để thêm thuốc tiếp theo)" />
+                                  <input
+                                    id={`med-note-input-${idx}`}
+                                    type="text"
+                                    value={med.medicineNote || ""}
+                                    onChange={e => updateMedLine(idx, "medicineNote", e.target.value)}
+                                    onKeyDown={e => handleEndRowKeyDown(idx, e)}
+                                    className="w-full px-2 py-1 border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-purple-500 text-xs text-slate-900 bg-white placeholder:text-slate-400"
+                                    placeholder="Ghi chú thêm (Nhấn Enter để thêm thuốc tiếp theo)"
+                                  />
                                 </div>
                               </td>
                               <td className="px-1 py-1.5 text-center">
