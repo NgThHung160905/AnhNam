@@ -432,7 +432,8 @@ export default function DiagnosisPage() {
         if (match?.id) finalPatientId = match.id;
       }
 
-      const savedDiagRecord = { id: editingDiagId, ...newDiag, patientId: finalPatientId };
+      const fee = Number(newDiag.serviceFee) || 0;
+      const savedDiagRecord = { id: editingDiagId, ...newDiag, serviceFee: fee, patientId: finalPatientId };
       setDiagnoses(diagnoses.map(d => d.id === editingDiagId ? savedDiagRecord : d));
       syncDiagnosisToMedicalSummary(savedDiagRecord);
     } else {
@@ -444,7 +445,8 @@ export default function DiagnosisPage() {
 
       const nums = diagnoses.map(d => typeof d.id === 'number' ? d.id : parseInt(String(d.id).replace(/\D/g, ''))).filter(n => !isNaN(n));
       const nextId = nums.length > 0 ? Math.max(...nums) + 1 : 1;
-      const savedDiagRecord = { id: nextId, ...newDiag, patientId: finalPatientId };
+      const fee = Number(newDiag.serviceFee) || 0;
+      const savedDiagRecord = { id: nextId, ...newDiag, serviceFee: fee, patientId: finalPatientId };
       setDiagnoses([savedDiagRecord, ...diagnoses]);
       syncDiagnosisToMedicalSummary(savedDiagRecord);
 
@@ -1013,8 +1015,17 @@ export default function DiagnosisPage() {
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-1">Tiền Dịch Vụ</label>
-                      <input type="number" value={newDiag.serviceFee} onChange={e => setNewDiag({ ...newDiag, serviceFee: Number(e.target.value) })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-900" min="0"
-                        placeholder="80000" />
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={newDiag.serviceFee ?? ""}
+                        onChange={e => {
+                          const raw = e.target.value.replace(/[^0-9]/g, "");
+                          setNewDiag({ ...newDiag, serviceFee: raw === "" ? "" : Number(raw) });
+                        }}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-900"
+                        placeholder="80000"
+                      />
                     </div>
                   </div>
                 </div>
