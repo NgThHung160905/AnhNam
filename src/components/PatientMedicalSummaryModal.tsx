@@ -27,7 +27,7 @@ import {
   formatExaminationDate,
   formatPatientCode,
 } from "@/lib/medicalSummaryService";
-import { formatDisplayDate, calculateAge } from "@/components/DatePicker";
+import { formatDisplayDate, calculateAge, formatInputDate } from "@/components/DatePicker";
 
 interface PatientMedicalSummaryModalProps {
   patientId: string;
@@ -699,9 +699,13 @@ export default function PatientMedicalSummaryModal({
                 <input
                   type="text"
                   value={editForm.examinationDate}
-                  onChange={(e) => setEditForm({ ...editForm, examinationDate: e.target.value })}
+                  onChange={(e) => {
+                    const formatted = formatInputDate(e.target.value, editForm.examinationDate);
+                    setEditForm({ ...editForm, examinationDate: formatted });
+                  }}
+                  maxLength={10}
                   className={`w-full px-2.5 py-1.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 ${theme.inputFocus} text-slate-900 bg-white`}
-                  placeholder="Ví dụ: 01-09-26"
+                  placeholder="DD-MM-YYYY (Ví dụ: 01-09-2026)"
                 />
               </div>
 

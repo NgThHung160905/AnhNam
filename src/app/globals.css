@@ -85,3 +85,106 @@ input[type="number"] {
   appearance: textfield;
 }
 
+/* ==========================================================================
+   PRINT STYLES: Đảm bảo in đơn thuốc và báo cáo hiển thị đầy đủ, đẹp và chuẩn A4
+   ========================================================================== */
+@media print {
+  @page {
+    size: A4 portrait;
+    /* margin: 0 loại bỏ hoàn toàn tiêu đề 'Quản lý Phòng Khám' và ngày giờ/URL mặc định của trình duyệt */
+    margin: 0;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    background-image: none !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Ẩn triệt để header điều hướng, sidebar, footer và các nút ẩn khi in */
+  header,
+  aside,
+  nav,
+  footer,
+  .print-hidden,
+  .print\:hidden {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* Reset toàn bộ lề tránh bị lệch ngang do sidebar hoặc container cha */
+  div, main, body, html {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  /* Reset layout container chính để không bị kẹt chiều cao hay thanh cuộn */
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+    display: block !important;
+    width: 100% !important;
+  }
+
+  /* Canh giữa tuyệt đối cho Bill Đơn Thuốc trên trang A4 */
+  .prescription-modal-backdrop {
+    position: static !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: flex-start !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+    inset: auto !important;
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    width: 100% !important;
+    z-index: auto !important;
+  }
+
+  .prescription-modal-container {
+    position: static !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 190mm !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    border: none !important;
+    overflow: visible !important;
+  }
+
+  .prescription-sheet {
+    margin: 0 auto !important;
+    max-width: 180mm !important;
+    width: 100% !important;
+    padding: 15mm 15mm !important;
+    background: #ffffff !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Tránh ngắt trang giữa chừng các dòng thuốc hoặc khu vực ký tên bác sĩ */
+  .prescription-item,
+  .prescription-footer {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+}
+
+

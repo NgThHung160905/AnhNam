@@ -70,6 +70,56 @@ export const calculateAge = (dob: string): string => {
   return `${years} tuổi ${remainingMonths} tháng`;
 };
 
+/**
+ * Tự động định dạng ngày tháng theo chuẩn DD-MM-YYYY:
+ * - Tự động chèn và cố định dấu '-' (người dùng chỉ cần gõ số, ví dụ 10012025 -> 10-01-2025)
+ * - Tự động xử lý khi bấm Backspace để không bị kẹt ở dấu '-'
+ * - Hỗ trợ gõ 1 chữ số rồi gõ '-' hoặc '/' (ví dụ 5- hoặc 5/ -> 05-)
+ */
+export const formatInputDate = (newVal: string, oldVal: string = ""): string => {
+  if (!newVal) return "";
+
+  // 1. Khi người dùng bấm Backspace xoá dấu '-' thì xoá luôn ký tự số trước đó
+  if (newVal.length < oldVal.length && oldVal.endsWith("-") && !newVal.endsWith("-")) {
+    newVal = newVal.slice(0, -1);
+  }
+
+  // 2. Hỗ trợ nhập 1 chữ số rồi nhấn '-' hoặc '/' (ví dụ: '5-' hoặc '5/' -> '05-')
+  if (/^\d[-/]$/.test(newVal)) {
+    return `0${newVal[0]}-`;
+  }
+  if (/^(\d{2}-\d)[-/]$/.test(newVal)) {
+    return `${newVal.slice(0, 3)}0${newVal[3]}-`;
+  }
+
+  // 3. Nếu người dùng dán (paste) định dạng chuẩn YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(newVal)) {
+    return `${newVal.slice(8, 10)}-${newVal.slice(5, 7)}-${newVal.slice(0, 4)}`;
+  }
+
+  // 4. Lấy toàn bộ chữ số (tối đa 8 chữ số tương ứng DDMMYYYY)
+  const digits = newVal.replace(/\D/g, "").slice(0, 8);
+  if (!digits) return "";
+
+  const isDeleting = newVal.length < oldVal.length;
+
+  if (digits.length < 2) {
+    return digits;
+  }
+  if (digits.length === 2) {
+    if (isDeleting) return digits;
+    return `${digits}-`;
+  }
+  if (digits.length < 4) {
+    return `${digits.slice(0, 2)}-${digits.slice(2)}`;
+  }
+  if (digits.length === 4) {
+    if (isDeleting) return `${digits.slice(0, 2)}-${digits.slice(2)}`;
+    return `${digits.slice(0, 2)}-${digits.slice(2)}-`;
+  }
+  return `${digits.slice(0, 2)}-${digits.slice(2, 4)}-${digits.slice(4)}`;
+};
+
 export const DatePicker = ({
   value,
   onChange,
@@ -210,6 +260,12 @@ export const DatePicker = ({
     ? `${value.slice(8, 10)}-${value.slice(5, 7)}-${value.slice(0, 4)}`
     : value;
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    const formatted = formatInputDate(raw, displayStr || "");
+    onChange(formatted);
+  };
+
   return (
     <div className="relative w-full" ref={wrapperRef}>
       <div
@@ -219,9 +275,15 @@ export const DatePicker = ({
         <input
           type="text"
           value={displayStr || ""}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={handleInputChange}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              setIsOpen(false);
+            }
+          }}
           placeholder={placeholder}
-          className="w-full bg-transparent focus:outline-none text-slate-900 cursor-pointer text-sm"
+          maxLength={10}
+          className="w-full bg-transparent focus:outline-none text-slate-900 cursor-text text-sm font-medium"
           onClick={(e) => {
             e.stopPropagation();
             setIsOpen(true);

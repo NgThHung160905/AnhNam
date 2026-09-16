@@ -154,6 +154,31 @@ export default function SummaryPage() {
   // Modal xem chi tiết ĐƠN THUỐC / KHÁM & KÊ TOA của bệnh nhân (ngay tại trang Tổng kết, không chuyển trang)
   const [viewingPrescription, setViewingPrescription] = useState<any>(null);
 
+  const prescriptionModalRef = useRef<HTMLDivElement>(null);
+
+  // Đảm bảo đơn thuốc luôn cuộn lên trên cùng ngay khi mở
+  useEffect(() => {
+    if (viewingPrescription && prescriptionModalRef.current) {
+      prescriptionModalRef.current.scrollTop = 0;
+    }
+  }, [viewingPrescription]);
+
+  // Xử lý in đơn thuốc: Cuộn về đỉnh tuyệt đối và ẩn tiêu đề trình duyệt trước khi kích hoạt hộp thoại in
+  const handlePrintPrescription = () => {
+    if (prescriptionModalRef.current) {
+      prescriptionModalRef.current.scrollTop = 0;
+    }
+    const originalTitle = document.title;
+    document.title = "";
+    window.scrollTo(0, 0);
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => {
+        document.title = originalTitle;
+      }, 1000);
+    }, 50);
+  };
+
   // Xem chi tiết Khám & Kê toa của bệnh nhân trực tiếp tại trang Tổng kết
   const handleOpenPatientDiagnosis = (item: any) => {
     if (!item) return;
@@ -174,21 +199,47 @@ export default function SummaryPage() {
   // Helper lấy danh sách thuốc kê trong phiếu khám
   const getPrescriptionDetails = (diag: any) => {
     if (!diag) return [];
+    let medCatalog = medicines;
+    try {
+      const saved = localStorage.getItem("khambenh_medicines");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) medCatalog = parsed;
+      }
+    } catch (e) {}
+
     const meds: any[] = diag.medicines || [];
-    if (meds.length > 0 && meds.some((m: any) => m.medicineName)) {
-      return meds.filter((m: any) => m.medicineName).map((m: any, idx: number) => {
-        const medInfo = medicines.find((med: any) => med.name?.trim().toLowerCase() === m.medicineName?.trim().toLowerCase()) || { unit: "Viên", price: "5000" };
-        const priceNum = typeof medInfo.price === "number" ? medInfo.price : (parseInt(String(medInfo.price || "5000").replace(/[^0-9]/g, "")) || 5000);
+    if (meds.length > 0 && meds.some((m: any) => m.medicineName || m.name || m.medicineId)) {
+      return meds.filter((m: any) => m.medicineName || m.name || m.medicineId).map((m: any, idx: number) => {
+        const rawName = String(m.medicineName || m.name || "").trim();
+        const rawId = String(m.medicineId || m.id || "").trim();
+
+        // 1. Tìm theo ID/mã thuốc trước (kể cả khi m.medicineName là mã thuốc như T001)
+        let medInfo = medCatalog.find((med: any) => 
+          (med.id && (String(med.id).trim().toLowerCase() === rawName.toLowerCase() || (rawId && String(med.id).trim().toLowerCase() === rawId.toLowerCase())))
+        );
+
+        // 2. Tìm theo tên thuốc nếu chưa thấy
+        if (!medInfo) {
+          medInfo = medCatalog.find((med: any) => 
+            med.name && med.name.trim().toLowerCase() === rawName.toLowerCase()
+          );
+        }
+
+        // Hiển thị MÃ THUỐC thay vì tên thuốc theo đúng yêu cầu
+        const displayMedCode = medInfo?.id || rawId || rawName;
+        const priceNum = typeof medInfo?.price === "number" ? medInfo.price : (parseInt(String(medInfo?.price || "5000").replace(/[^0-9]/g, "")) || 5000);
+
         return {
           id: idx + 1,
-          name: m.medicineName,
+          name: displayMedCode,
           quantity: m.medicineQuantity || 1,
-          unit: m.medicineUnit ?? medInfo?.unit ?? (m.medicineName ? "Viên" : ""),
+          unit: m.medicineUnit ?? medInfo?.unit ?? "Viên",
           price: priceNum,
           medDays: m.medDays || "",
           medTimes: m.medTimes || "",
           medAmount: m.medAmount || "",
-          medCustomUnit: m.medCustomUnit ?? "viên",
+          medCustomUnit: m.medCustomUnit ?? medInfo?.unit?.toLowerCase() ?? "viên",
           notes: m.medicineNote || ""
         };
       });
@@ -570,6 +621,8 @@ export default function SummaryPage() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-20 print:p-0 print:space-y-4">
+      {/* Khung nội dung trang Tổng Kết - Ẩn khi đang in Đơn Thuốc */}
+      <div className={`space-y-6 ${viewingPrescription ? "print:hidden" : ""}`}>
 
       {/* ======================= HEADER & CÔNG CỤ ======================= */}
       <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200/80 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative overflow-hidden">
@@ -1289,14 +1342,20 @@ export default function SummaryPage() {
           </div>
         </div>
       )}
+      </div>
 
       {/* ======================= MODAL XEM CHI TIẾT KHÁM & KÊ TOA (ĐƠN THUỐC) TRỰC TIẾP TRÊN TRANG TỔNG KẾT ======================= */}
       {viewingPrescription && (
-        <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[60] p-4" onClick={() => setViewingPrescription(null)}>
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="p-8 bg-white text-slate-800 relative rounded-2xl">
+        <div className="prescription-modal-backdrop fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[60] p-4" onClick={() => setViewingPrescription(null)}>
+          <div ref={prescriptionModalRef} className="prescription-modal-container bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="prescription-sheet p-8 bg-white text-slate-800 relative rounded-2xl">
               {/* Nút đóng */}
-              <button onClick={() => setViewingPrescription(null)} className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors print:hidden cursor-pointer" title="Đóng">
+              <button
+                type="button"
+                onClick={() => setViewingPrescription(null)}
+                className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors print:hidden cursor-pointer"
+                title="Đóng"
+              >
                 <X className="w-5 h-5" />
               </button>
 
@@ -1417,7 +1476,7 @@ export default function SummaryPage() {
                 <h3 className="font-bold text-lg mb-4">Thuốc điều trị:</h3>
                 <div className="space-y-6">
                   {getPrescriptionDetails(viewingPrescription).map((item: any, idx: number) => (
-                    <div key={idx} className="text-base">
+                    <div key={idx} className="prescription-item text-base">
                       <div className="font-bold mb-2">
                         {idx + 1}/ {item.name}
                       </div>
@@ -1429,7 +1488,7 @@ export default function SummaryPage() {
                         </span>
                         <span className="mr-6">{item.unit}</span>
 
-                        <span className="whitespace-nowrap">Uống mỗi lần {item.medAmount || "...."} {item.medCustomUnit || item.unit || "viên"}, mỗi ngày {item.medTimes || "...."} lần, trong {item.medDays || "...."} ngày.</span>
+                        <span className="whitespace-nowrap">Uống mỗi ngày {item.medTimes || "...."} lần, mỗi lần {item.medAmount || "...."} {item.medCustomUnit || item.unit || "viên"}, trong {item.medDays || "...."} ngày.</span>
                       </div>
                     </div>
                   ))}
@@ -1453,7 +1512,7 @@ export default function SummaryPage() {
               </div>
 
               {/* Ngày khám & Bác sĩ ký tên ở góc phải dưới cùng */}
-              <div className="flex justify-end mt-6 mb-8">
+              <div className="prescription-footer flex justify-end mt-6 mb-8">
                 <div className="text-center min-w-[240px]">
                   <p className="text-sm italic font-bold text-amber-950 mb-1 inline-block bg-yellow-200 px-3 py-1 rounded-md border border-yellow-300">
                     {(() => {
@@ -1483,6 +1542,7 @@ export default function SummaryPage() {
               {/* Các nút hành động */}
               <div className="flex justify-between items-center mt-6 pt-4 border-t border-slate-200 print:hidden">
                 <button
+                  type="button"
                   onClick={() => setViewingPrescription(null)}
                   className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors border border-slate-300 text-sm cursor-pointer"
                 >
@@ -1490,7 +1550,8 @@ export default function SummaryPage() {
                 </button>
                 <div className="flex gap-3">
                   <button
-                    onClick={() => window.print()}
+                    type="button"
+                    onClick={handlePrintPrescription}
                     className="px-6 py-2 bg-[#33CC99] text-white rounded-lg font-medium hover:bg-[#28b082] transition-colors shadow-sm flex items-center gap-2 text-sm cursor-pointer"
                   >
                     <Printer className="w-4 h-4" />
