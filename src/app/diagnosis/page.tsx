@@ -1545,7 +1545,7 @@ export default function DiagnosisPage() {
                   className="px-6 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors shadow-sm flex items-center gap-2 cursor-pointer"
                 >
                   <Printer className="w-4 h-4" />
-                  <span>In Đơn Thuốc (A5)</span>
+                  <span>In Đơn Thuốc</span>
                 </button>
                 <button
                   type="button"
