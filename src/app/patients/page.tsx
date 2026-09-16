@@ -61,6 +61,12 @@ export default function PatientsPage() {
       const nextIdNum = nums.length > 0 ? Math.max(...nums) + 1 : 1;
       const newId = String(nextIdNum).padStart(4, '0');
 
+      // Đảm bảo không bị lưu vết lịch sử khám cũ của ID này
+      try {
+        localStorage.removeItem(`khambenh_summary_visits_${newId}`);
+        localStorage.removeItem(`khambenh_summary_visits_${formatPatientCode(newId)}`);
+      } catch (e) {}
+
       setPatients([{ id: newId, ...newPatient }, ...patients]);
     }
 
@@ -101,6 +107,13 @@ export default function PatientsPage() {
         }
         return updated;
       });
+
+      // Xóa sạch lịch sử khám đã lưu trong localStorage cho bệnh nhân này
+      try {
+        localStorage.removeItem(`khambenh_summary_visits_${deletingPatient.id}`);
+        localStorage.removeItem(`khambenh_summary_visits_${formatPatientCode(deletingPatient.id)}`);
+      } catch (e) {}
+
       setDeletingPatient(null);
     }
   };

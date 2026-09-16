@@ -10,30 +10,6 @@ export function formatPatientCode(idStr?: string): string {
 }
 
 /**
- * Dữ liệu mẫu chuẩn theo yêu cầu cho BN001 / 0001 - Nguyễn Văn A
- */
-const SAMPLE_VISITS_BN001: MedicalVisit[] = [
-  {
-    id: "sample-v1",
-    patientId: "0001",
-    examinationDate: "01-09-26",
-    diagnosis: "Viêm họng",
-    medicalHistory: "Sốt 3 ngày, ho",
-    medications: "Amoxicillin, paracetamol",
-    note: "",
-  },
-  {
-    id: "sample-v2",
-    patientId: "0001",
-    examinationDate: "03-09-26",
-    diagnosis: "Viêm họng",
-    medicalHistory: "Còn sốt",
-    medications: "Cefpodoxim, thuốc ho",
-    note: "Uống amox bị ội",
-  },
-];
-
-/**
  * Chuẩn hóa ngày khám sang định dạng ngắn DD-MM-YY (hoặc DD-MM-YYYY)
  * Ví dụ: "2026-09-01" -> "01-09-26", "01-09-2026" -> "01-09-26"
  */
@@ -88,7 +64,7 @@ export function getPatientMedicalSummary(
   if (typeof window === "undefined") {
     return {
       patient: fallbackPatient || null,
-      visits: SAMPLE_VISITS_BN001,
+      visits: [],
     };
   }
 
@@ -138,20 +114,6 @@ export function getPatientMedicalSummary(
     };
   }
 
-  const isSamplePatient =
-    targetNum === 1 ||
-    patientId === "0001" ||
-    patientId === "BN001" ||
-    patientId === "001" ||
-    (patientInfo && patientInfo.name?.toLowerCase().includes("nguyễn văn a"));
-
-  // Đảm bảo thông tin mẫu luôn có đầy đủ số điện thoại và địa chỉ
-  if (isSamplePatient && patientInfo) {
-    if (!patientInfo.phone) patientInfo.phone = "0901234567";
-    if (!patientInfo.address) patientInfo.address = "Hà Nội";
-    patientInfo.id = "0001";
-  }
-
   let visits: MedicalVisit[] = [];
 
   // 1b. Kiểm tra xem người dùng đã từng chỉnh sửa / lưu danh sách lịch sử khám cho bệnh nhân này chưa
@@ -163,16 +125,18 @@ export function getPatientMedicalSummary(
     if (customVisitsRaw) {
       const customVisits: MedicalVisit[] = JSON.parse(customVisitsRaw);
       if (Array.isArray(customVisits)) {
-        visits = customVisits;
+        // Tự động loại bỏ bất kỳ dữ liệu mẫu cũ nào (sample-v1, sample-v2) đã từng lưu
+        visits = customVisits.filter(
+          (v) => !v.id?.toString().startsWith("sample-") && v.id !== "sample-v1" && v.id !== "sample-v2"
+        );
+        if (visits.length !== customVisits.length) {
+          localStorage.setItem(`khambenh_summary_visits_${patientId}`, JSON.stringify(visits));
+          localStorage.setItem(`khambenh_summary_visits_${formattedId}`, JSON.stringify(visits));
+        }
       }
     }
   } catch (err) {
     console.error("Lỗi khi đọc lịch sử khám tùy chỉnh:", err);
-  }
-
-  // Nếu chưa có lần khám nào và là bệnh nhân mẫu
-  if (visits.length === 0 && isSamplePatient) {
-    visits = [...SAMPLE_VISITS_BN001];
   }
 
   // 2. Tự động kiểm tra và đồng bộ tất cả phiếu khám từ khambenh_diagnosis cho bệnh nhân này
@@ -233,15 +197,7 @@ export function getPatientMedicalSummary(
   }
 
   return {
-    patient: patientInfo || (isSamplePatient ? {
-      id: "0001",
-      name: "Nguyễn Văn A",
-      gender: "Nam",
-      dob: "2020-01-01",
-      phone: "0901234567",
-      address: "Hà Nội",
-      weight: "15",
-    } : null),
+    patient: patientInfo || null,
     visits,
   };
 }
@@ -302,8 +258,6 @@ export function syncDiagnosisToMedicalSummary(diag: any): void {
     if (!patientId) return;
 
     const formattedId = formatPatientCode(patientId);
-    const targetNum = parseInt(String(patientId).replace(/\D/g, ""), 10);
-    const isSamplePatient = targetNum === 1 || patientId === "0001" || patientId === "BN001";
 
     const key1 = `khambenh_summary_visits_${patientId}`;
     const key2 = `khambenh_summary_visits_${formattedId}`;
@@ -313,10 +267,12 @@ export function syncDiagnosisToMedicalSummary(diag: any): void {
     if (existingRaw) {
       try {
         const parsed = JSON.parse(existingRaw);
-        if (Array.isArray(parsed)) visits = parsed;
+        if (Array.isArray(parsed)) {
+          visits = parsed.filter(
+            (v) => !v.id?.toString().startsWith("sample-") && v.id !== "sample-v1" && v.id !== "sample-v2"
+          );
+        }
       } catch (e) {}
-    } else if (isSamplePatient) {
-      visits = [...SAMPLE_VISITS_BN001];
     }
 
     const visitId = diag.id;
