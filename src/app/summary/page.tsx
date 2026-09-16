@@ -206,7 +206,7 @@ export default function SummaryPage() {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) medCatalog = parsed;
       }
-    } catch (e) {}
+    } catch (e) { }
 
     const meds: any[] = diag.medicines || [];
     if (meds.length > 0 && meds.some((m: any) => m.medicineName || m.name || m.medicineId)) {
@@ -215,13 +215,13 @@ export default function SummaryPage() {
         const rawId = String(m.medicineId || m.id || "").trim();
 
         // 1. Tìm theo ID/mã thuốc trước (kể cả khi m.medicineName là mã thuốc như T001)
-        let medInfo = medCatalog.find((med: any) => 
+        let medInfo = medCatalog.find((med: any) =>
           (med.id && (String(med.id).trim().toLowerCase() === rawName.toLowerCase() || (rawId && String(med.id).trim().toLowerCase() === rawId.toLowerCase())))
         );
 
         // 2. Tìm theo tên thuốc nếu chưa thấy
         if (!medInfo) {
-          medInfo = medCatalog.find((med: any) => 
+          medInfo = medCatalog.find((med: any) =>
             med.name && med.name.trim().toLowerCase() === rawName.toLowerCase()
           );
         }
@@ -624,731 +624,731 @@ export default function SummaryPage() {
       {/* Khung nội dung trang Tổng Kết - Ẩn khi đang in Đơn Thuốc */}
       <div className={`space-y-6 ${viewingPrescription ? "print:hidden" : ""}`}>
 
-      {/* ======================= HEADER & CÔNG CỤ ======================= */}
-      <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200/80 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative overflow-hidden">
-        {/* Background gradient nhẹ với tone #33CC99 */}
-        <div className="absolute top-0 right-0 w-80 h-full bg-gradient-to-l from-[#33CC99]/15 via-emerald-50/20 to-transparent pointer-events-none" />
+        {/* ======================= HEADER & CÔNG CỤ ======================= */}
+        <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200/80 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative overflow-hidden">
+          {/* Background gradient nhẹ với tone #33CC99 */}
+          <div className="absolute top-0 right-0 w-80 h-full bg-gradient-to-l from-[#33CC99]/15 via-emerald-50/20 to-transparent pointer-events-none" />
 
-        <div className="relative z-10 flex items-center gap-4">
-          <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-[#33CC99] to-[#249970] flex items-center justify-center text-white shadow-md shadow-[#33CC99]/25">
-            <BarChart3 className="w-7 h-7" />
+          <div className="relative z-10 flex items-center gap-4">
+            <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-[#33CC99] to-[#249970] flex items-center justify-center text-white shadow-md shadow-[#33CC99]/25">
+              <BarChart3 className="w-7 h-7" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Tổng Kết Doanh Thu</h2>
+                <span className="bg-[#33CC99]/15 text-[#1a7053] text-xs font-bold px-2.5 py-0.5 rounded-full border border-[#33CC99]/30">
+                  Phòng Khám
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-slate-500 mt-1 flex items-center gap-1.5 flex-wrap">
+                <span className="font-semibold text-slate-700">Công thức:</span>
+                <code className="bg-slate-100 px-2 py-0.5 rounded text-[#1a7053] font-mono text-[11px] font-bold border border-slate-200">
+                  Doanh thu ngày = Số BN × (Tiền dịch vụ + Đơn giá thuốc)
+                </code>
+              </p>
+            </div>
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Tổng Kết Doanh Thu</h2>
-              <span className="bg-[#33CC99]/15 text-[#1a7053] text-xs font-bold px-2.5 py-0.5 rounded-full border border-[#33CC99]/30">
-                Phòng Khám
+
+          {/* Nút tác vụ */}
+          <div className="relative z-10 flex items-center gap-2.5 flex-wrap w-full md:w-auto print:hidden">
+
+            {/* Nút Xuất Excel (.xlsx) */}
+            <button
+              onClick={handleExportExcel}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3.5 py-2.5 bg-[#33CC99] hover:bg-[#28b082] text-white rounded-xl text-xs sm:text-sm font-semibold transition-all shadow-sm cursor-pointer"
+              title="Tải bảng số liệu về máy (.xlsx)"
+            >
+              <Download className="w-4 h-4" />
+              <span>Xuất Excel</span>
+            </button>
+
+            {/* Nút In báo cáo */}
+            <button
+              onClick={() => window.print()}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3.5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs sm:text-sm font-semibold transition-all shadow-sm cursor-pointer"
+              title="In trang báo cáo tổng kết"
+            >
+              <Printer className="w-4 h-4" />
+              <span>In Báo Cáo</span>
+            </button>
+          </div>
+        </div>
+
+        {/* ======================= 3 THẺ KPI TỔNG QUAN ======================= */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {/* 1. Doanh thu hôm nay (Tông Xanh Dương) */}
+          <div className="bg-white p-5 rounded-2xl border border-blue-200/80 shadow-xs hover:shadow-md transition-all relative overflow-hidden">
+            {/* Dải màu gradient trang trí trên đỉnh thẻ */}
+            <div
+              className="absolute top-0 left-0 right-0 h-1"
+              style={{ background: "linear-gradient(to right, #2563eb, #38bdf8)" }}
+            />
+
+            <div className="flex items-center justify-between text-slate-500 text-xs font-semibold mb-2 uppercase tracking-wider">
+              <span>Doanh Thu Hôm Nay</span>
+              <span className="p-1.5 bg-blue-50 text-blue-600 rounded-lg border border-blue-100/80"><Calendar className="w-4 h-4" /></span>
+            </div>
+            <div className="text-2xl font-black text-slate-900 mb-1">
+              {formatVND(todayStats.revenue)}
+            </div>
+            <div className="flex items-center justify-between text-xs text-slate-500">
+              <span>Số bệnh nhân: <strong className="text-blue-900">{todayStats.count} ca</strong></span>
+              <span className="text-blue-600 font-bold">{todayStats.dateFormatted}</span>
+            </div>
+          </div>
+
+          {/* 2. Doanh thu tháng đang chọn (Đồng bộ màu chính xác theo cột trong Biểu đồ) */}
+          <div
+            className="bg-white p-5 rounded-2xl border shadow-xs hover:shadow-md transition-all relative overflow-hidden"
+            style={{ borderColor: `${selectedMonthPalette.from}40` }}
+          >
+            {/* Dải màu gradient trang trí theo đúng màu cột tháng trong biểu đồ */}
+            <div
+              className="absolute top-0 left-0 right-0 h-1 transition-all duration-300"
+              style={{ background: `linear-gradient(to right, ${selectedMonthPalette.from}, ${selectedMonthPalette.to})` }}
+            />
+
+            <div className="flex items-center justify-between text-slate-500 text-xs font-semibold mb-2 uppercase tracking-wider">
+              <span>Doanh Thu Tháng {selectedMonth}</span>
+              <span
+                className="p-1.5 rounded-lg transition-colors"
+                style={{
+                  backgroundColor: `${selectedMonthPalette.from}18`,
+                  color: selectedMonthPalette.from
+                }}
+              >
+                <Receipt className="w-4 h-4" />
               </span>
             </div>
-            <p className="text-xs sm:text-sm text-slate-500 mt-1 flex items-center gap-1.5 flex-wrap">
-              <span className="font-semibold text-slate-700">Công thức:</span>
-              <code className="bg-slate-100 px-2 py-0.5 rounded text-[#1a7053] font-mono text-[11px] font-bold border border-slate-200">
-                Doanh thu ngày = Số BN × (Tiền dịch vụ + Đơn giá thuốc)
-              </code>
-            </p>
-          </div>
-        </div>
 
-        {/* Nút tác vụ */}
-        <div className="relative z-10 flex items-center gap-2.5 flex-wrap w-full md:w-auto print:hidden">
-
-          {/* Nút Xuất Excel (.xlsx) */}
-          <button
-            onClick={handleExportExcel}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3.5 py-2.5 bg-[#33CC99] hover:bg-[#28b082] text-white rounded-xl text-xs sm:text-sm font-semibold transition-all shadow-sm cursor-pointer"
-            title="Tải bảng số liệu về máy (.xlsx)"
-          >
-            <Download className="w-4 h-4" />
-            <span>Xuất Excel</span>
-          </button>
-
-          {/* Nút In báo cáo */}
-          <button
-            onClick={() => window.print()}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3.5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs sm:text-sm font-semibold transition-all shadow-sm cursor-pointer"
-            title="In trang báo cáo tổng kết"
-          >
-            <Printer className="w-4 h-4" />
-            <span>In Báo Cáo</span>
-          </button>
-        </div>
-      </div>
-
-      {/* ======================= 3 THẺ KPI TỔNG QUAN ======================= */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {/* 1. Doanh thu hôm nay (Tông Xanh Dương) */}
-        <div className="bg-white p-5 rounded-2xl border border-blue-200/80 shadow-xs hover:shadow-md transition-all relative overflow-hidden">
-          {/* Dải màu gradient trang trí trên đỉnh thẻ */}
-          <div
-            className="absolute top-0 left-0 right-0 h-1"
-            style={{ background: "linear-gradient(to right, #2563eb, #38bdf8)" }}
-          />
-
-          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold mb-2 uppercase tracking-wider">
-            <span>Doanh Thu Hôm Nay</span>
-            <span className="p-1.5 bg-blue-50 text-blue-600 rounded-lg border border-blue-100/80"><Calendar className="w-4 h-4" /></span>
-          </div>
-          <div className="text-2xl font-black text-slate-900 mb-1">
-            {formatVND(todayStats.revenue)}
-          </div>
-          <div className="flex items-center justify-between text-xs text-slate-500">
-            <span>Số bệnh nhân: <strong className="text-blue-900">{todayStats.count} ca</strong></span>
-            <span className="text-blue-600 font-bold">{todayStats.dateFormatted}</span>
-          </div>
-        </div>
-
-        {/* 2. Doanh thu tháng đang chọn (Đồng bộ màu chính xác theo cột trong Biểu đồ) */}
-        <div
-          className="bg-white p-5 rounded-2xl border shadow-xs hover:shadow-md transition-all relative overflow-hidden"
-          style={{ borderColor: `${selectedMonthPalette.from}40` }}
-        >
-          {/* Dải màu gradient trang trí theo đúng màu cột tháng trong biểu đồ */}
-          <div
-            className="absolute top-0 left-0 right-0 h-1 transition-all duration-300"
-            style={{ background: `linear-gradient(to right, ${selectedMonthPalette.from}, ${selectedMonthPalette.to})` }}
-          />
-
-          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold mb-2 uppercase tracking-wider">
-            <span>Doanh Thu Tháng {selectedMonth}</span>
-            <span
-              className="p-1.5 rounded-lg transition-colors"
-              style={{
-                backgroundColor: `${selectedMonthPalette.from}18`,
-                color: selectedMonthPalette.from
-              }}
-            >
-              <Receipt className="w-4 h-4" />
-            </span>
-          </div>
-
-          <div
-            className="text-2xl font-black mb-1 transition-colors"
-            style={{ color: selectedMonthPalette.from }}
-          >
-            {formatVND(currentMonthStats.revenue)}
-          </div>
-
-          <div className="flex items-center justify-between text-xs text-slate-500">
-            <span>
-              Số bệnh nhân: <strong style={{ color: selectedMonthPalette.from }}>{currentMonthStats.patients} ca</strong>
-            </span>
-            <span
-              className="font-bold transition-colors"
+            <div
+              className="text-2xl font-black mb-1 transition-colors"
               style={{ color: selectedMonthPalette.from }}
             >
-              Tháng {selectedMonth}/{selectedYear}
-            </span>
-          </div>
-        </div>
-
-        {/* 3. Doanh thu cả năm (Tông Xanh Lá Emerald) */}
-        <div className="bg-white p-5 rounded-2xl border border-emerald-200/80 shadow-xs hover:shadow-md transition-all relative overflow-hidden">
-          {/* Dải màu gradient trang trí trên đỉnh thẻ */}
-          <div
-            className="absolute top-0 left-0 right-0 h-1"
-            style={{ background: "linear-gradient(to right, #059669, #34d399)" }}
-          />
-
-          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold mb-2 uppercase tracking-wider">
-            <span>Doanh Thu Năm {selectedYear}</span>
-            <span className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg border border-emerald-100/80"><TrendingUp className="w-4 h-4" /></span>
-          </div>
-          <div className="text-2xl font-black text-emerald-600 mb-1">
-            {formatVND(currentYearStats.revenue)}
-          </div>
-          <div className="flex items-center justify-between text-xs text-slate-500">
-            <span>Tổng cả năm: <strong className="text-emerald-900">{currentYearStats.patients} ca</strong></span>
-            <span className="text-emerald-700 font-bold">12 Tháng</span>
-          </div>
-        </div>
-      </div>
-
-      {/* ======================= BỘ LỌC THỜI GIAN & KHU VỰC BIỂU ĐỒ ======================= */}
-      <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm relative overflow-visible">
-
-        {/* Mascot Gấu Trúc Hoạt Hình (Góc trên phải) */}
-        <div className="absolute -top-7 right-4 sm:-top-9 sm:right-6 z-20 flex items-center gap-2 print:hidden">
-          <div
-            onClick={handlePandaClick}
-            className="hidden sm:flex items-center gap-1.5 bg-white px-3.5 py-1.5 rounded-2xl border-2 border-[#33CC99]/40 shadow-sm text-xs font-bold text-[#1a7053] cursor-pointer hover:border-[#33CC99] transition-all select-none"
-            title="Click vào em để đổi lời chào cute nha! 🎋"
-          >
-            <span>{PANDA_MESSAGES[pandaMsgIndex]}</span>
-          </div>
-
-          <div
-            onClick={handlePandaClick}
-            className={`cursor-pointer select-none ${isPandaWiggling ? 'animate-bounce' : ''}`}
-            title="Bé Panda chúc Bác sĩ khám vui vẻ!"
-          >
-            <div className="w-16 h-18 sm:w-20 sm:h-22 flex items-end justify-center filter drop-shadow-md hover:scale-105 transition-all">
-              <img
-                src="/panda_cute.png"
-                alt="Panda"
-                className="w-full h-full object-contain pointer-events-none"
-              />
+              {formatVND(currentMonthStats.revenue)}
             </div>
-          </div>
-        </div>
 
-        {/* HEADER CỦA BIỂU ĐỒ */}
-        <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-4 pb-5 mb-5 border-b border-slate-100 pr-16 sm:pr-48">
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-[#33CC99] inline-block"></span>
-                <span>Biểu Đồ Doanh Thu 12 Tháng Năm</span>
-                <select
-                  value={selectedYear}
-                  onChange={e => setSelectedYear(Number(e.target.value))}
-                  className="bg-[#33CC99]/10 text-[#1a7053] border border-[#33CC99]/30 rounded-lg px-2.5 py-0.5 font-bold text-base cursor-pointer focus:outline-none"
-                >
-                  {availableYears.map(y => (
-                    <option key={y} value={y}>{y}</option>
-                  ))}
-                </select>
-              </h3>
-              <span className="text-xs bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full font-semibold">
-                (Click vào cột để xem chi tiết)
+            <div className="flex items-center justify-between text-xs text-slate-500">
+              <span>
+                Số bệnh nhân: <strong style={{ color: selectedMonthPalette.from }}>{currentMonthStats.patients} ca</strong>
+              </span>
+              <span
+                className="font-bold transition-colors"
+                style={{ color: selectedMonthPalette.from }}
+              >
+                Tháng {selectedMonth}/{selectedYear}
               </span>
             </div>
-            <p className="text-xs text-slate-500 mt-1">
-              Mỗi cột thể hiện tổng doanh thu của từng tháng trong năm {selectedYear}.
-            </p>
+          </div>
+
+          {/* 3. Doanh thu cả năm (Tông Xanh Lá Emerald) */}
+          <div className="bg-white p-5 rounded-2xl border border-emerald-200/80 shadow-xs hover:shadow-md transition-all relative overflow-hidden">
+            {/* Dải màu gradient trang trí trên đỉnh thẻ */}
+            <div
+              className="absolute top-0 left-0 right-0 h-1"
+              style={{ background: "linear-gradient(to right, #059669, #34d399)" }}
+            />
+
+            <div className="flex items-center justify-between text-slate-500 text-xs font-semibold mb-2 uppercase tracking-wider">
+              <span>Doanh Thu Năm {selectedYear}</span>
+              <span className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg border border-emerald-100/80"><TrendingUp className="w-4 h-4" /></span>
+            </div>
+            <div className="text-2xl font-black text-emerald-600 mb-1">
+              {formatVND(currentYearStats.revenue)}
+            </div>
+            <div className="flex items-center justify-between text-xs text-slate-500">
+              <span>Tổng cả năm: <strong className="text-emerald-900">{currentYearStats.patients} ca</strong></span>
+              <span className="text-emerald-700 font-bold">12 Tháng</span>
+            </div>
           </div>
         </div>
 
-        {/* KHUNG VẼ BIỂU ĐỒ SVG 12 THÁNG 12 MÀU THEO 4 MÙA */}
-        <div className="relative w-full h-80 sm:h-92 select-none overflow-x-auto pb-4">
-          <svg className="w-full h-full min-w-[700px]" viewBox="0 0 840 300">
-            <defs>
-              {/* Định nghĩa Gradients riêng cho từng tháng theo 4 mùa */}
-              {MONTH_PALETTES.map(p => (
-                <linearGradient key={p.gradId} id={p.gradId} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={p.to} />
-                  <stop offset="100%" stopColor={p.from} />
-                </linearGradient>
-              ))}
-            </defs>
+        {/* ======================= BỘ LỌC THỜI GIAN & KHU VỰC BIỂU ĐỒ ======================= */}
+        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm relative overflow-visible">
 
-            {/* Đường lưới ngang */}
-            {[0, 0.25, 0.5, 0.75, 1].map((pct, i) => {
-              const y = 250 - pct * 210;
-              const val = maxMonthlyRevenue * pct;
-              return (
-                <g key={i}>
-                  <line x1="70" y1={y} x2="820" y2={y} stroke="#f1f5f9" strokeDasharray="4,4" strokeWidth="1.2" />
-                  <text x="60" y={y + 4} textAnchor="end" fontSize="10" fill="#94a3b8" fontWeight="600" fontFamily="monospace">
-                    {formatVNDCompact(val)}
-                  </text>
-                </g>
-              );
-            })}
+          {/* Mascot Gấu Trúc Hoạt Hình (Góc trên phải) */}
+          <div className="absolute -top-7 right-4 sm:-top-9 sm:right-6 z-20 flex items-center gap-2 print:hidden">
+            <div
+              onClick={handlePandaClick}
+              className="hidden sm:flex items-center gap-1.5 bg-white px-3.5 py-1.5 rounded-2xl border-2 border-[#33CC99]/40 shadow-sm text-xs font-bold text-[#1a7053] cursor-pointer hover:border-[#33CC99] transition-all select-none"
+              title="Click vào em để đổi lời chào cute nha! 🎋"
+            >
+              <span>{PANDA_MESSAGES[pandaMsgIndex]}</span>
+            </div>
 
-            {/* Trục X và Trục Y chính */}
-            <line x1="70" y1="250" x2="820" y2="250" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" />
-            <line x1="70" y1="35" x2="70" y2="250" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" />
+            <div
+              onClick={handlePandaClick}
+              className={`cursor-pointer select-none ${isPandaWiggling ? 'animate-bounce' : ''}`}
+              title="Bé Panda chúc Bác sĩ khám vui vẻ!"
+            >
+              <div className="w-16 h-18 sm:w-20 sm:h-22 flex items-end justify-center filter drop-shadow-md hover:scale-105 transition-all">
+                <img
+                  src="/panda_cute.png"
+                  alt="Panda"
+                  className="w-full h-full object-contain pointer-events-none"
+                />
+              </div>
+            </div>
+          </div>
 
-            {/* VẼ 12 CỘT CHO 12 THÁNG */}
-            {(() => {
-              const count = monthlyData.length;
-              const usableWidth = 730;
-              const colSlot = usableWidth / count;
-              const barWidth = 38;
-
-              return monthlyData.map((d, idx) => {
-                const center = 70 + idx * colSlot + colSlot / 2;
-                const x = center - barWidth / 2;
-                const h = maxMonthlyRevenue > 0 ? (d.revenue / maxMonthlyRevenue) * 210 : 0;
-                const y = 250 - h;
-                const isSelected = d.month === selectedMonth;
-
-                return (
-                  <g
-                    key={d.month}
-                    className="cursor-pointer group transition-all"
-                    onClick={() => handleBarClick(d.month)}
-                    onMouseEnter={() => setHoveredMonth({ ...d, x: center, y: y > 0 ? y : 240 })}
-                    onMouseLeave={() => setHoveredMonth(null)}
+          {/* HEADER CỦA BIỂU ĐỒ */}
+          <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-4 pb-5 mb-5 border-b border-slate-100 pr-16 sm:pr-48">
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-[#33CC99] inline-block"></span>
+                  <span>Biểu Đồ Doanh Thu 12 Tháng Năm</span>
+                  <select
+                    value={selectedYear}
+                    onChange={e => setSelectedYear(Number(e.target.value))}
+                    className="bg-[#33CC99]/10 text-[#1a7053] border border-[#33CC99]/30 rounded-lg px-2.5 py-0.5 font-bold text-base cursor-pointer focus:outline-none"
                   >
-                    {/* Vùng cảm ứng click rộng quanh cột */}
-                    <rect
-                      x={center - colSlot / 2}
-                      y="35"
-                      width={colSlot}
-                      height="215"
-                      fill="transparent"
-                      className="cursor-pointer"
-                    />
+                    {availableYears.map(y => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                  </select>
+                </h3>
+                <span className="text-xs bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full font-semibold">
+                  (Click vào cột để xem chi tiết)
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                Mỗi cột thể hiện tổng doanh thu của từng tháng trong năm {selectedYear}.
+              </p>
+            </div>
+          </div>
 
-                    {/* Hào quang nền khi cột được chọn mang sắc thái của mùa đó */}
-                    {isSelected && (
-                      <rect
-                        x={center - colSlot / 2 + 3}
-                        y="35"
-                        width={colSlot - 6}
-                        height="215"
-                        fill={d.palette.from}
-                        fillOpacity="0.14"
-                        rx="10"
-                      />
-                    )}
+          {/* KHUNG VẼ BIỂU ĐỒ SVG 12 THÁNG 12 MÀU THEO 4 MÙA */}
+          <div className="relative w-full h-80 sm:h-92 select-none overflow-x-auto pb-4">
+            <svg className="w-full h-full min-w-[700px]" viewBox="0 0 840 300">
+              <defs>
+                {/* Định nghĩa Gradients riêng cho từng tháng theo 4 mùa */}
+                {MONTH_PALETTES.map(p => (
+                  <linearGradient key={p.gradId} id={p.gradId} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={p.to} />
+                    <stop offset="100%" stopColor={p.from} />
+                  </linearGradient>
+                ))}
+              </defs>
 
-                    {/* Thân Cột Biểu Đồ - Giữ nguyên màu mùa Xuân Hạ Thu Đông */}
-                    {h > 0 ? (
-                      <rect
-                        x={x}
-                        y={y}
-                        width={barWidth}
-                        height={h}
-                        fill={`url(#${d.palette.gradId})`}
-                        rx={barWidth / 5}
-                        className={`transition-all duration-300 ${isSelected
-                          ? "stroke-3 stroke-slate-900 brightness-110 shadow-lg"
-                          : "group-hover:brightness-110"
-                          }`}
-                      />
-                    ) : (
-                      // Mốc xám thanh mảnh khi tháng chưa có doanh thu
-                      <rect
-                        x={x}
-                        y="246"
-                        width={barWidth}
-                        height="4"
-                        fill="#e2e8f0"
-                        rx="2"
-                        className={isSelected ? "stroke-2 stroke-slate-700" : ""}
-                      />
-                    )}
-
-                    {/* Nhãn doanh thu trên đầu cột */}
-                    {d.revenue > 0 && (
-                      <text
-                        x={center}
-                        y={y - 8}
-                        textAnchor="middle"
-                        fontSize="10"
-                        fill={isSelected ? d.palette.from : "#475569"}
-                        fontWeight="800"
-                      >
-                        {formatVNDCompact(d.revenue)}
-                      </text>
-                    )}
-
-                    {/* Chỉ báo tháng được chọn */}
-                    {isSelected && (
-                      <circle
-                        cx={center}
-                        cy="262"
-                        r="3.5"
-                        fill={d.palette.from}
-                      />
-                    )}
-
-                    {/* Nhãn Tháng ở trục X */}
-                    <text
-                      x={center}
-                      y="278"
-                      textAnchor="middle"
-                      fontSize="11"
-                      fill={isSelected ? d.palette.from : "#64748b"}
-                      fontWeight={isSelected ? "900" : "600"}
-                      className="select-none"
-                    >
-                      {d.monthLabel}
+              {/* Đường lưới ngang */}
+              {[0, 0.25, 0.5, 0.75, 1].map((pct, i) => {
+                const y = 250 - pct * 210;
+                const val = maxMonthlyRevenue * pct;
+                return (
+                  <g key={i}>
+                    <line x1="70" y1={y} x2="820" y2={y} stroke="#f1f5f9" strokeDasharray="4,4" strokeWidth="1.2" />
+                    <text x="60" y={y + 4} textAnchor="end" fontSize="10" fill="#94a3b8" fontWeight="600" fontFamily="monospace">
+                      {formatVNDCompact(val)}
                     </text>
                   </g>
                 );
-              });
-            })()}
-          </svg>
-
-          {/* Tooltip khi Hover trên Cột Tháng (Đảm bảo form đồng đều, không bị co dúm hay cắt chữ) */}
-          {hoveredMonth && (
-            <div
-              className={`absolute pointer-events-none bg-slate-900 text-white px-4 py-3 rounded-2xl text-xs shadow-2xl border border-slate-700 -translate-y-full mb-3 z-30 transition-all duration-150 min-w-[290px] select-none ${hoveredMonth.month >= 10
-                ? "-translate-x-[85%]"
-                : hoveredMonth.month <= 2
-                  ? "-translate-x-[15%]"
-                  : "-translate-x-1/2"
-                }`}
-              style={{
-                left: `${(hoveredMonth.x / 840) * 100}%`,
-                top: `${(hoveredMonth.y / 300) * 100}%`
-              }}
-            >
-              <div className="font-bold border-b border-slate-700 pb-1.5 mb-2 flex items-center justify-between gap-3 text-white">
-                <div className="flex items-center gap-1.5 shrink-0 whitespace-nowrap">
-                  <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${hoveredMonth.palette.bg}`}></span>
-                  <span className="font-black text-white">{hoveredMonth.fullName} - Năm {selectedYear}</span>
-                </div>
-                <span className="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-300 shrink-0 whitespace-nowrap">
-                  Click xem ngày
-                </span>
-              </div>
-              <div className="space-y-1.5 font-mono">
-                <div className="flex justify-between items-center gap-2 text-emerald-400 font-bold text-sm whitespace-nowrap">
-                  <span className="text-xs text-slate-400 font-sans font-medium">Tổng Doanh Thu:</span>
-                  <span className="font-mono">{formatVND(hoveredMonth.revenue)}</span>
-                </div>
-                <div className="flex justify-between items-center gap-2 text-slate-300 text-xs whitespace-nowrap">
-                  <span className="text-slate-400 font-sans font-medium">Số ca khám:</span>
-                  <span className="font-bold text-white font-mono">{hoveredMonth.patients} ca</span>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Chú thích hướng dẫn */}
-        <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2 text-xs text-slate-500">
-          <div className="flex items-center gap-1.5">
-            <Info className="w-4 h-4 text-[#33CC99] flex-shrink-0" />
-            <span>Click vào bất kỳ cột tháng nào trên biểu đồ để mở bảng chi tiết từng ngày của tháng đó.</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-slate-700">Đang chọn:</span>
-            <span
-              className="font-bold px-2.5 py-0.5 rounded-md border text-xs transition-colors"
-              style={{
-                backgroundColor: `${selectedMonthPalette.from}15`,
-                color: selectedMonthPalette.from,
-                borderColor: `${selectedMonthPalette.from}35`
-              }}
-            >
-              Tháng {selectedMonth}/{selectedYear}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* ======================= BẢNG CHI TIẾT THEO TỪNG NGÀY ======================= */}
-      <div ref={detailSectionRef} className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <FileText
-                className="w-5 h-5 transition-colors"
-                style={{ color: selectedMonthPalette.from }}
-              />
-              <h3 className="text-lg font-bold text-slate-900">
-                Bảng Chi Tiết Doanh Thu Tháng {selectedMonth}/{selectedYear}
-              </h3>
-            </div>
-            <p className="text-xs text-slate-500 mt-1">
-              Cột <strong>Đơn Giá Thuốc</strong> là tổng tiền thuốc của các bệnh nhân trong ngày.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 text-xs font-semibold bg-slate-50 px-3 py-2 rounded-xl border border-slate-200">
-            <span className="text-slate-600">Tháng hiển thị:</span>
-            <select
-              value={selectedMonth}
-              onChange={e => setSelectedMonth(Number(e.target.value))}
-              className="bg-transparent font-bold cursor-pointer focus:outline-none transition-colors"
-              style={{ color: selectedMonthPalette.from }}
-            >
-              {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
-                <option key={m} value={m}>Tháng {m}/{selectedYear}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* BẢNG DỮ LIỆU */}
-        {/* BẢNG DỮ LIỆU */}
-        <div className="overflow-x-auto border border-slate-200 rounded-2xl shadow-xs">
-          <table className="w-full text-sm text-left border-collapse">
-            {/* THEAD: TÁCH MÀU RIÊNG BIỆT CHO TỪNG CỘT & ĐỒNG BỘ CĂN GIỮA TẤT CẢ */}
-            <thead className="text-xs font-black select-none font-sans">
-              <tr>
-                {/* 1. Cột Ngày Khám: Tông VÀNG - Căn giữa */}
-                <th className="px-4 py-3.5 text-center bg-yellow-100 text-amber-950 border-b-2 border-yellow-400 font-black">
-                  <div className="inline-flex items-center justify-center gap-1.5">
-                    <Calendar className="w-4 h-4 text-amber-800" />
-                    <span>Ngày Khám</span>
-                  </div>
-                </th>
-
-                {/* 2. Cột Số Bệnh Nhân: Tông XANH DƯƠNG - Căn giữa */}
-                <th className="px-4 py-3.5 text-center bg-blue-100 text-blue-950 border-b-2 border-blue-400 font-black">
-                  <div className="inline-flex items-center justify-center gap-1.5">
-                    <Users className="w-4 h-4 text-blue-700" />
-                    <span>Số Bệnh Nhân</span>
-                  </div>
-                </th>
-
-                {/* 3. Cột Đơn Giá Thuốc: Tông màu #DE4D86 - Căn giữa */}
-                <th className="px-4 py-3.5 text-center bg-[#DE4D86]/20 text-[#831843] border-b-2 border-[#DE4D86] font-black">
-                  <div className="inline-flex items-center justify-center gap-1.5">
-                    <Pill className="w-4 h-4 text-[#DE4D86]" />
-                    <span>Đơn Giá Thuốc</span>
-                  </div>
-                </th>
-
-                {/* 4. Cột Doanh Thu Ngày: Tông XANH LÁ EMERALD - Căn giữa */}
-                <th className="px-4 py-3.5 text-center font-black bg-emerald-100 text-emerald-950 border-b-2 border-emerald-500">
-                  <div className="inline-flex items-center justify-center gap-1.5">
-                    <TrendingUp className="w-4 h-4 text-emerald-700" />
-                    <span>Doanh Thu Ngày</span>
-                  </div>
-                </th>
-
-                {/* 5. Cột Thao Tác: Tông màu #6C7EE1 - Căn giữa */}
-                <th className="px-4 py-3.5 text-center w-36 print:hidden bg-[#6C7EE1]/20 text-[#1e2963] border-b-2 border-[#6C7EE1] font-black">
-                  <div className="inline-flex items-center justify-center">
-                    <span>Thao Tác</span>
-                  </div>
-                </th>
-              </tr>
-            </thead>
-
-            <tbody className="divide-y divide-slate-100 text-xs font-sans">
-              {dailyData.map((d) => {
-                const hasPatients = d.patients > 0;
-                return (
-                  <tr
-                    key={d.day}
-                    className={`transition-colors ${hasPatients
-                      ? "hover:bg-[#6C7EE1]/5 bg-white"
-                      : "hover:bg-slate-50 bg-slate-50/30"
-                      }`}
-                  >
-                    {/* 1. Ngày Khám (Màu Vàng - in đậm font-black - căn giữa) */}
-                    <td className="px-4 py-3 font-sans text-center">
-                      <div className={`inline-flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg font-black border shadow-xs transition-all ${hasPatients
-                        ? "bg-yellow-300 text-amber-950 border-yellow-400 ring-2 ring-yellow-400/50 shadow-sm"
-                        : "bg-yellow-100 text-amber-900 border-yellow-300"
-                        }`}>
-                        <Calendar className="w-4 h-4 text-amber-800 shrink-0" />
-                        <span className="tracking-tight text-xs sm:text-sm font-black">{d.fullDateStr}</span>
-                        <span className="text-xs text-amber-800 font-black">({d.dayOfWeek})</span>
-                      </div>
-                    </td>
-
-                    {/* 2. Số Bệnh Nhân (Màu Xanh Dương - in đậm font-black - căn giữa) */}
-                    <td className="px-4 py-3 text-center font-sans">
-                      {hasPatients ? (
-                        <span className="inline-flex items-center justify-center px-3 py-1 rounded-lg text-xs font-black bg-blue-100 text-blue-950 border border-blue-300 shadow-2xs">
-                          {d.patients} ca
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-lg text-xs font-black text-blue-900/80 bg-blue-50 border border-blue-200">
-                          0 ca
-                        </span>
-                      )}
-                    </td>
-
-                    {/* 3. Đơn Giá Thuốc (Màu #DE4D86 - in đậm font-black - căn giữa) */}
-                    <td className="px-4 py-3 text-center font-sans">
-                      <span className={`inline-flex items-center justify-center px-2.5 py-1 rounded-lg text-xs font-black border ${d.medicinePrice > 0
-                        ? "text-[#831843] bg-[#DE4D86]/15 border-[#DE4D86]/40 shadow-2xs"
-                        : "text-[#831843]/70 bg-[#DE4D86]/10 border-[#DE4D86]/25"
-                        }`}>
-                        {formatVND(d.medicinePrice)}
-                      </span>
-                    </td>
-
-                    {/* 4. Doanh Thu Ngày (Màu Xanh Lá Emerald - in đậm font-black - căn giữa) */}
-                    <td className="px-4 py-3 text-center font-sans">
-                      <span className={`inline-flex items-center justify-center px-2.5 py-1 rounded-lg text-xs font-black border ${d.revenue > 0
-                        ? "text-emerald-950 bg-emerald-100 border-emerald-400 shadow-2xs"
-                        : "text-emerald-900/80 bg-emerald-50 border-emerald-200 font-black"
-                        }`}>
-                        {formatVND(d.revenue)}
-                      </span>
-                    </td>
-
-                    {/* 5. Thao Tác: Màu #6C7EE1 - Căn giữa */}
-                    <td className="px-4 py-3 text-center font-sans print:hidden">
-                      {hasPatients ? (
-                        <div className="flex items-center justify-center gap-1.5">
-                          {d.diagnoses.length === 1 ? (
-                            <button
-                              onClick={() => handleOpenPatientDiagnosis(d.diagnoses[0])}
-                              className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#6C7EE1] hover:bg-[#5869CD] text-white rounded-lg text-xs font-black shadow-xs transition-all cursor-pointer hover:scale-105"
-                              title="Hiện thẳng vào Xem Chi Tiết ca khám của bệnh nhân này"
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                              <span>Xem chi tiết</span>
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => setViewingDayModal({ day: d.day, month: selectedMonth, year: selectedYear, diags: d.diagnoses })}
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#6C7EE1]/15 hover:bg-[#6C7EE1]/25 text-[#1e2963] rounded-lg text-xs font-black border border-[#6C7EE1]/40 transition-all cursor-pointer"
-                              title={`Xem danh sách ${d.diagnoses.length} bệnh nhân trong ngày`}
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                              <span>Xem chi tiết ({d.diagnoses.length})</span>
-                            </button>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-lg text-xs font-bold text-[#6C7EE1]/70 bg-[#6C7EE1]/10 border border-[#6C7EE1]/25">
-                          Không phát sinh
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                );
               })}
-            </tbody>
 
-            {/* DÒNG TỔNG CỘNG FOOTER: ĐỒNG BỘ MÀU TƯƠNG ỨNG TỪNG CỘT & CĂN GIỮA */}
-            <tfoot className="text-xs font-black border-t-2 border-slate-300 select-none font-sans">
-              <tr>
-                <td className="px-4 py-3.5 font-sans text-center uppercase tracking-wider text-slate-900 bg-slate-100 font-black">
-                  TỔNG CỘNG THÁNG {selectedMonth}/{selectedYear}:
-                </td>
-                <td className="px-4 py-3.5 text-center font-sans text-blue-950 font-black text-sm bg-blue-100/70 border-t border-blue-300">
-                  {dailyData.reduce((s, d) => s + d.patients, 0)} ca
-                </td>
-                <td className="px-4 py-3.5 text-center font-black text-[#831843] bg-[#DE4D86]/20 border-t border-[#DE4D86]/40">
-                  {formatVND(dailyData.reduce((s, d) => s + d.medicinePrice, 0))}
-                </td>
-                <td className="px-4 py-3.5 text-center text-emerald-950 text-base font-black bg-emerald-100 border-t-2 border-emerald-500">
-                  {formatVND(dailyData.reduce((s, d) => s + d.revenue, 0))}
-                </td>
-                <td className="px-4 py-3.5 print:hidden bg-[#6C7EE1]/15 border-t border-[#6C7EE1]/30"></td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-      </div>
+              {/* Trục X và Trục Y chính */}
+              <line x1="70" y1="250" x2="820" y2="250" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" />
+              <line x1="70" y1="35" x2="70" y2="250" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" />
 
-      {/* ======================= MODAL XEM CHI TIẾT CA KHÁM NGÀY ======================= */}
-      {viewingDayModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
-            {/* Modal Header */}
-            <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-              <div>
-                <h4 className="text-lg font-bold text-slate-900 flex items-center gap-2 flex-wrap">
-                  <Eye className="w-5 h-5 text-[#33CC99]" />
-                  <span>Chi Tiết Ca Khám:</span>
-                  <span className="bg-yellow-300 text-amber-950 px-3 py-0.5 rounded-lg font-black border border-yellow-400 shadow-xs text-base">
-                    Ngày {String(viewingDayModal.day).padStart(2, '0')}/{String(viewingDayModal.month).padStart(2, '0')}/{viewingDayModal.year}
-                  </span>
-                </h4>
-                <p className="text-xs text-slate-500 mt-1">
-                  Tổng cộng <strong>{viewingDayModal.diags.length} bệnh nhân</strong> đã khám trong ngày •
-                </p>
-              </div>
-              <button
-                onClick={() => setViewingDayModal(null)}
-                className="w-8 h-8 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-700 flex items-center justify-center cursor-pointer transition-colors"
+              {/* VẼ 12 CỘT CHO 12 THÁNG */}
+              {(() => {
+                const count = monthlyData.length;
+                const usableWidth = 730;
+                const colSlot = usableWidth / count;
+                const barWidth = 38;
+
+                return monthlyData.map((d, idx) => {
+                  const center = 70 + idx * colSlot + colSlot / 2;
+                  const x = center - barWidth / 2;
+                  const h = maxMonthlyRevenue > 0 ? (d.revenue / maxMonthlyRevenue) * 210 : 0;
+                  const y = 250 - h;
+                  const isSelected = d.month === selectedMonth;
+
+                  return (
+                    <g
+                      key={d.month}
+                      className="cursor-pointer group transition-all"
+                      onClick={() => handleBarClick(d.month)}
+                      onMouseEnter={() => setHoveredMonth({ ...d, x: center, y: y > 0 ? y : 240 })}
+                      onMouseLeave={() => setHoveredMonth(null)}
+                    >
+                      {/* Vùng cảm ứng click rộng quanh cột */}
+                      <rect
+                        x={center - colSlot / 2}
+                        y="35"
+                        width={colSlot}
+                        height="215"
+                        fill="transparent"
+                        className="cursor-pointer"
+                      />
+
+                      {/* Hào quang nền khi cột được chọn mang sắc thái của mùa đó */}
+                      {isSelected && (
+                        <rect
+                          x={center - colSlot / 2 + 3}
+                          y="35"
+                          width={colSlot - 6}
+                          height="215"
+                          fill={d.palette.from}
+                          fillOpacity="0.14"
+                          rx="10"
+                        />
+                      )}
+
+                      {/* Thân Cột Biểu Đồ - Giữ nguyên màu mùa Xuân Hạ Thu Đông */}
+                      {h > 0 ? (
+                        <rect
+                          x={x}
+                          y={y}
+                          width={barWidth}
+                          height={h}
+                          fill={`url(#${d.palette.gradId})`}
+                          rx={barWidth / 5}
+                          className={`transition-all duration-300 ${isSelected
+                            ? "stroke-3 stroke-slate-900 brightness-110 shadow-lg"
+                            : "group-hover:brightness-110"
+                            }`}
+                        />
+                      ) : (
+                        // Mốc xám thanh mảnh khi tháng chưa có doanh thu
+                        <rect
+                          x={x}
+                          y="246"
+                          width={barWidth}
+                          height="4"
+                          fill="#e2e8f0"
+                          rx="2"
+                          className={isSelected ? "stroke-2 stroke-slate-700" : ""}
+                        />
+                      )}
+
+                      {/* Nhãn doanh thu trên đầu cột */}
+                      {d.revenue > 0 && (
+                        <text
+                          x={center}
+                          y={y - 8}
+                          textAnchor="middle"
+                          fontSize="10"
+                          fill={isSelected ? d.palette.from : "#475569"}
+                          fontWeight="800"
+                        >
+                          {formatVNDCompact(d.revenue)}
+                        </text>
+                      )}
+
+                      {/* Chỉ báo tháng được chọn */}
+                      {isSelected && (
+                        <circle
+                          cx={center}
+                          cy="262"
+                          r="3.5"
+                          fill={d.palette.from}
+                        />
+                      )}
+
+                      {/* Nhãn Tháng ở trục X */}
+                      <text
+                        x={center}
+                        y="278"
+                        textAnchor="middle"
+                        fontSize="11"
+                        fill={isSelected ? d.palette.from : "#64748b"}
+                        fontWeight={isSelected ? "900" : "600"}
+                        className="select-none"
+                      >
+                        {d.monthLabel}
+                      </text>
+                    </g>
+                  );
+                });
+              })()}
+            </svg>
+
+            {/* Tooltip khi Hover trên Cột Tháng (Đảm bảo form đồng đều, không bị co dúm hay cắt chữ) */}
+            {hoveredMonth && (
+              <div
+                className={`absolute pointer-events-none bg-slate-900 text-white px-4 py-3 rounded-2xl text-xs shadow-2xl border border-slate-700 -translate-y-full mb-3 z-30 transition-all duration-150 min-w-[290px] select-none ${hoveredMonth.month >= 10
+                  ? "-translate-x-[85%]"
+                  : hoveredMonth.month <= 2
+                    ? "-translate-x-[15%]"
+                    : "-translate-x-1/2"
+                  }`}
+                style={{
+                  left: `${(hoveredMonth.x / 840) * 100}%`,
+                  top: `${(hoveredMonth.y / 300) * 100}%`
+                }}
               >
-                <X className="w-4 h-4" />
-              </button>
+                <div className="font-bold border-b border-slate-700 pb-1.5 mb-2 flex items-center justify-between gap-3 text-white">
+                  <div className="flex items-center gap-1.5 shrink-0 whitespace-nowrap">
+                    <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${hoveredMonth.palette.bg}`}></span>
+                    <span className="font-black text-white">{hoveredMonth.fullName} - Năm {selectedYear}</span>
+                  </div>
+                  <span className="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-300 shrink-0 whitespace-nowrap">
+                    Click xem ngày
+                  </span>
+                </div>
+                <div className="space-y-1.5 font-mono">
+                  <div className="flex justify-between items-center gap-2 text-emerald-400 font-bold text-sm whitespace-nowrap">
+                    <span className="text-xs text-slate-400 font-sans font-medium">Tổng Doanh Thu:</span>
+                    <span className="font-mono">{formatVND(hoveredMonth.revenue)}</span>
+                  </div>
+                  <div className="flex justify-between items-center gap-2 text-slate-300 text-xs whitespace-nowrap">
+                    <span className="text-slate-400 font-sans font-medium">Số ca khám:</span>
+                    <span className="font-bold text-white font-mono">{hoveredMonth.patients} ca</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Chú thích hướng dẫn */}
+          <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2 text-xs text-slate-500">
+            <div className="flex items-center gap-1.5">
+              <Info className="w-4 h-4 text-[#33CC99] flex-shrink-0" />
+              <span>Click vào bất kỳ cột tháng nào trên biểu đồ để mở bảng chi tiết từng ngày của tháng đó.</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-slate-700">Đang chọn:</span>
+              <span
+                className="font-bold px-2.5 py-0.5 rounded-md border text-xs transition-colors"
+                style={{
+                  backgroundColor: `${selectedMonthPalette.from}15`,
+                  color: selectedMonthPalette.from,
+                  borderColor: `${selectedMonthPalette.from}35`
+                }}
+              >
+                Tháng {selectedMonth}/{selectedYear}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* ======================= BẢNG CHI TIẾT THEO TỪNG NGÀY ======================= */}
+        <div ref={detailSectionRef} className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <FileText
+                  className="w-5 h-5 transition-colors"
+                  style={{ color: selectedMonthPalette.from }}
+                />
+                <h3 className="text-lg font-bold text-slate-900">
+                  Bảng Chi Tiết Doanh Thu Tháng {selectedMonth}/{selectedYear}
+                </h3>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                Cột <strong>Đơn Giá Thuốc</strong> là tổng tiền thuốc của các bệnh nhân trong ngày.
+              </p>
             </div>
 
-            {/* Modal Content */}
-            <div className="p-5 overflow-y-auto space-y-4 flex-1">
-              {viewingDayModal.diags.length === 0 ? (
-                <div className="py-12 text-center text-slate-400 text-sm">
-                  Không có ca khám nào trong ngày này.
-                </div>
-              ) : (
-                viewingDayModal.diags.map((item: any, idx: number) => (
-                  <div
-                    key={idx}
-                    onClick={() => handleOpenPatientDiagnosis(item)}
-                    className="p-4 rounded-2xl border border-slate-200 bg-white hover:border-[#33CC99] hover:shadow-md hover:bg-[#33CC99]/5 transition-all shadow-2xs space-y-3 cursor-pointer group"
-                    title="Bấm vào để xem chi tiết Khám & Kê Toa của bệnh nhân này"
-                  >
-                    <div className="flex items-center justify-between flex-wrap gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-full bg-[#33CC99]/15 text-[#1a7053] text-xs font-bold flex items-center justify-center group-hover:bg-[#33CC99] group-hover:text-white transition-colors">
-                          {idx + 1}
-                        </span>
-                        <h5 className="font-bold text-slate-900 text-base group-hover:text-[#1a7053] transition-colors flex items-center gap-1.5">
-                          <span>{item.patientName}</span>
-                          <ArrowUpRight className="w-4 h-4 text-[#33CC99] opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </h5>
-                        {item.patientId && (
-                          <span className="text-[11px] bg-slate-100 text-slate-600 font-mono font-semibold px-2 py-0.5 rounded">
-                            Mã: {item.patientId}
+            <div className="flex items-center gap-2 text-xs font-semibold bg-slate-50 px-3 py-2 rounded-xl border border-slate-200">
+              <span className="text-slate-600">Tháng hiển thị:</span>
+              <select
+                value={selectedMonth}
+                onChange={e => setSelectedMonth(Number(e.target.value))}
+                className="bg-transparent font-bold cursor-pointer focus:outline-none transition-colors"
+                style={{ color: selectedMonthPalette.from }}
+              >
+                {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                  <option key={m} value={m}>Tháng {m}/{selectedYear}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* BẢNG DỮ LIỆU */}
+          {/* BẢNG DỮ LIỆU */}
+          <div className="overflow-x-auto border border-slate-200 rounded-2xl shadow-xs">
+            <table className="w-full text-sm text-left border-collapse">
+              {/* THEAD: TÁCH MÀU RIÊNG BIỆT CHO TỪNG CỘT & ĐỒNG BỘ CĂN GIỮA TẤT CẢ */}
+              <thead className="text-xs font-black select-none font-sans">
+                <tr>
+                  {/* 1. Cột Ngày Khám: Tông VÀNG - Căn giữa */}
+                  <th className="px-4 py-3.5 text-center bg-yellow-100 text-amber-950 border-b-2 border-yellow-400 font-black">
+                    <div className="inline-flex items-center justify-center gap-1.5">
+                      <Calendar className="w-4 h-4 text-amber-800" />
+                      <span>Ngày Khám</span>
+                    </div>
+                  </th>
+
+                  {/* 2. Cột Số Bệnh Nhân: Tông XANH DƯƠNG - Căn giữa */}
+                  <th className="px-4 py-3.5 text-center bg-blue-100 text-blue-950 border-b-2 border-blue-400 font-black">
+                    <div className="inline-flex items-center justify-center gap-1.5">
+                      <Users className="w-4 h-4 text-blue-700" />
+                      <span>Số Bệnh Nhân</span>
+                    </div>
+                  </th>
+
+                  {/* 3. Cột Đơn Giá Thuốc: Tông màu #DE4D86 - Căn giữa */}
+                  <th className="px-4 py-3.5 text-center bg-[#DE4D86]/20 text-[#831843] border-b-2 border-[#DE4D86] font-black">
+                    <div className="inline-flex items-center justify-center gap-1.5">
+                      <Pill className="w-4 h-4 text-[#DE4D86]" />
+                      <span>Đơn Giá Thuốc</span>
+                    </div>
+                  </th>
+
+                  {/* 4. Cột Doanh Thu Ngày: Tông XANH LÁ EMERALD - Căn giữa */}
+                  <th className="px-4 py-3.5 text-center font-black bg-emerald-100 text-emerald-950 border-b-2 border-emerald-500">
+                    <div className="inline-flex items-center justify-center gap-1.5">
+                      <TrendingUp className="w-4 h-4 text-emerald-700" />
+                      <span>Doanh Thu Ngày</span>
+                    </div>
+                  </th>
+
+                  {/* 5. Cột Thao Tác: Tông màu #6C7EE1 - Căn giữa */}
+                  <th className="px-4 py-3.5 text-center w-36 print:hidden bg-[#6C7EE1]/20 text-[#1e2963] border-b-2 border-[#6C7EE1] font-black">
+                    <div className="inline-flex items-center justify-center">
+                      <span>Thao Tác</span>
+                    </div>
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody className="divide-y divide-slate-100 text-xs font-sans">
+                {dailyData.map((d) => {
+                  const hasPatients = d.patients > 0;
+                  return (
+                    <tr
+                      key={d.day}
+                      className={`transition-colors ${hasPatients
+                        ? "hover:bg-[#6C7EE1]/5 bg-white"
+                        : "hover:bg-slate-50 bg-slate-50/30"
+                        }`}
+                    >
+                      {/* 1. Ngày Khám (Màu Vàng - in đậm font-black - căn giữa) */}
+                      <td className="px-4 py-3 font-sans text-center">
+                        <div className={`inline-flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg font-black border shadow-xs transition-all ${hasPatients
+                          ? "bg-yellow-300 text-amber-950 border-yellow-400 ring-2 ring-yellow-400/50 shadow-sm"
+                          : "bg-yellow-100 text-amber-900 border-yellow-300"
+                          }`}>
+                          <Calendar className="w-4 h-4 text-amber-800 shrink-0" />
+                          <span className="tracking-tight text-xs sm:text-sm font-black">{d.fullDateStr}</span>
+                          <span className="text-xs text-amber-800 font-black">({d.dayOfWeek})</span>
+                        </div>
+                      </td>
+
+                      {/* 2. Số Bệnh Nhân (Màu Xanh Dương - in đậm font-black - căn giữa) */}
+                      <td className="px-4 py-3 text-center font-sans">
+                        {hasPatients ? (
+                          <span className="inline-flex items-center justify-center px-3 py-1 rounded-lg text-xs font-black bg-blue-100 text-blue-950 border border-blue-300 shadow-2xs">
+                            {d.patients} ca
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-lg text-xs font-black text-blue-900/80 bg-blue-50 border border-blue-200">
+                            0 ca
                           </span>
                         )}
-                      </div>
-                      <div className="flex items-center gap-2.5">
-                        <div className="text-right">
-                          <span className="text-xs text-slate-500 block">Doanh thu ca này</span>
-                          <span className="text-base font-black text-emerald-600 font-mono">
-                            {formatVND(item.revenue)}
-                          </span>
-                        </div>
+                      </td>
 
-                      </div>
-                    </div>
-
-                    <div className="text-xs text-slate-600 grid grid-cols-1 sm:grid-cols-2 gap-2 bg-slate-50 p-3 rounded-xl">
-                      <div>
-                        <span className="text-slate-500">Bác sĩ khám:</span>{" "}
-                        <strong className="text-slate-800">{item.doctorName || "BS. Võ Tấn Nam"}</strong>
-                      </div>
-                      <div>
-                        <span className="text-slate-500">Chẩn đoán:</span>{" "}
-                        <strong className="text-[#1a7053]">{item.diagnosis || "Chưa có chẩn đoán"}</strong>
-                      </div>
-                      <div>
-                        <span className="text-slate-500">Tiền dịch vụ:</span>{" "}
-                        <strong className="text-slate-800">{formatVND(item.serviceFee)}</strong>
-                      </div>
-                      <div>
-                        <span className="text-slate-500">Tiền thuốc:</span>{" "}
-                        <strong className="text-slate-800">{formatVND(item.medicineFee)}</strong>
-                      </div>
-                    </div>
-
-                    {/* Danh sách thuốc đã kê */}
-                    {Array.isArray(item.medicines) && item.medicines.length > 0 && item.medicines.some((m: any) => m.medicineName) && (
-                      <div className="text-xs border-t border-slate-100 pt-2">
-                        <span className="font-semibold text-slate-700 block mb-1.5 flex items-center gap-1">
-                          <Pill className="w-3.5 h-3.5 text-[#33CC99]" />
-                          Toa thuốc đã kê:
+                      {/* 3. Đơn Giá Thuốc (Màu #DE4D86 - in đậm font-black - căn giữa) */}
+                      <td className="px-4 py-3 text-center font-sans">
+                        <span className={`inline-flex items-center justify-center px-2.5 py-1 rounded-lg text-xs font-black border ${d.medicinePrice > 0
+                          ? "text-[#831843] bg-[#DE4D86]/15 border-[#DE4D86]/40 shadow-2xs"
+                          : "text-[#831843]/70 bg-[#DE4D86]/10 border-[#DE4D86]/25"
+                          }`}>
+                          {formatVND(d.medicinePrice)}
                         </span>
-                        <div className="space-y-1 pl-4">
-                          {item.medicines.filter((m: any) => m.medicineName).map((med: any, mIdx: number) => (
-                            <div key={mIdx} className="text-slate-600 flex justify-between">
-                              <span>• {med.medicineName}</span>
-                              <span className="font-mono text-slate-500">Số lượng: {med.medicineQuantity || 1} {med.medicineUnit || "viên"}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
+                      </td>
 
-            {/* Modal Footer */}
-            <div className="p-4 border-t border-slate-200 bg-slate-50 flex justify-between items-center">
-              <Link
-                href="/diagnosis"
-                className="text-xs font-semibold text-[#1a7053] hover:text-[#13533e] flex items-center gap-1"
-              >
-                <span>Đến phần Khám & Kê toa</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </Link>
-              <button
-                onClick={() => setViewingDayModal(null)}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold cursor-pointer transition-all"
-              >
-                Đóng
-              </button>
-            </div>
+                      {/* 4. Doanh Thu Ngày (Màu Xanh Lá Emerald - in đậm font-black - căn giữa) */}
+                      <td className="px-4 py-3 text-center font-sans">
+                        <span className={`inline-flex items-center justify-center px-2.5 py-1 rounded-lg text-xs font-black border ${d.revenue > 0
+                          ? "text-emerald-950 bg-emerald-100 border-emerald-400 shadow-2xs"
+                          : "text-emerald-900/80 bg-emerald-50 border-emerald-200 font-black"
+                          }`}>
+                          {formatVND(d.revenue)}
+                        </span>
+                      </td>
+
+                      {/* 5. Thao Tác: Màu #6C7EE1 - Căn giữa */}
+                      <td className="px-4 py-3 text-center font-sans print:hidden">
+                        {hasPatients ? (
+                          <div className="flex items-center justify-center gap-1.5">
+                            {d.diagnoses.length === 1 ? (
+                              <button
+                                onClick={() => handleOpenPatientDiagnosis(d.diagnoses[0])}
+                                className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#6C7EE1] hover:bg-[#5869CD] text-white rounded-lg text-xs font-black shadow-xs transition-all cursor-pointer hover:scale-105"
+                                title="Hiện thẳng vào Xem Chi Tiết ca khám của bệnh nhân này"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                                <span>Xem chi tiết</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => setViewingDayModal({ day: d.day, month: selectedMonth, year: selectedYear, diags: d.diagnoses })}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#6C7EE1]/15 hover:bg-[#6C7EE1]/25 text-[#1e2963] rounded-lg text-xs font-black border border-[#6C7EE1]/40 transition-all cursor-pointer"
+                                title={`Xem danh sách ${d.diagnoses.length} bệnh nhân trong ngày`}
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                                <span>Xem chi tiết ({d.diagnoses.length})</span>
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-lg text-xs font-bold text-[#6C7EE1]/70 bg-[#6C7EE1]/10 border border-[#6C7EE1]/25">
+                            Không phát sinh
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+
+              {/* DÒNG TỔNG CỘNG FOOTER: ĐỒNG BỘ MÀU TƯƠNG ỨNG TỪNG CỘT & CĂN GIỮA */}
+              <tfoot className="text-xs font-black border-t-2 border-slate-300 select-none font-sans">
+                <tr>
+                  <td className="px-4 py-3.5 font-sans text-center uppercase tracking-wider text-slate-900 bg-slate-100 font-black">
+                    TỔNG CỘNG THÁNG {selectedMonth}/{selectedYear}:
+                  </td>
+                  <td className="px-4 py-3.5 text-center font-sans text-blue-950 font-black text-sm bg-blue-100/70 border-t border-blue-300">
+                    {dailyData.reduce((s, d) => s + d.patients, 0)} ca
+                  </td>
+                  <td className="px-4 py-3.5 text-center font-black text-[#831843] bg-[#DE4D86]/20 border-t border-[#DE4D86]/40">
+                    {formatVND(dailyData.reduce((s, d) => s + d.medicinePrice, 0))}
+                  </td>
+                  <td className="px-4 py-3.5 text-center text-emerald-950 text-base font-black bg-emerald-100 border-t-2 border-emerald-500">
+                    {formatVND(dailyData.reduce((s, d) => s + d.revenue, 0))}
+                  </td>
+                  <td className="px-4 py-3.5 print:hidden bg-[#6C7EE1]/15 border-t border-[#6C7EE1]/30"></td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
         </div>
-      )}
+
+        {/* ======================= MODAL XEM CHI TIẾT CA KHÁM NGÀY ======================= */}
+        {viewingDayModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
+              {/* Modal Header */}
+              <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+                <div>
+                  <h4 className="text-lg font-bold text-slate-900 flex items-center gap-2 flex-wrap">
+                    <Eye className="w-5 h-5 text-[#33CC99]" />
+                    <span>Chi Tiết Ca Khám:</span>
+                    <span className="bg-yellow-300 text-amber-950 px-3 py-0.5 rounded-lg font-black border border-yellow-400 shadow-xs text-base">
+                      Ngày {String(viewingDayModal.day).padStart(2, '0')}/{String(viewingDayModal.month).padStart(2, '0')}/{viewingDayModal.year}
+                    </span>
+                  </h4>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Tổng cộng <strong>{viewingDayModal.diags.length} bệnh nhân</strong> đã khám trong ngày •
+                  </p>
+                </div>
+                <button
+                  onClick={() => setViewingDayModal(null)}
+                  className="w-8 h-8 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-700 flex items-center justify-center cursor-pointer transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Modal Content */}
+              <div className="p-5 overflow-y-auto space-y-4 flex-1">
+                {viewingDayModal.diags.length === 0 ? (
+                  <div className="py-12 text-center text-slate-400 text-sm">
+                    Không có ca khám nào trong ngày này.
+                  </div>
+                ) : (
+                  viewingDayModal.diags.map((item: any, idx: number) => (
+                    <div
+                      key={idx}
+                      onClick={() => handleOpenPatientDiagnosis(item)}
+                      className="p-4 rounded-2xl border border-slate-200 bg-white hover:border-[#33CC99] hover:shadow-md hover:bg-[#33CC99]/5 transition-all shadow-2xs space-y-3 cursor-pointer group"
+                      title="Bấm vào để xem chi tiết Khám & Kê Toa của bệnh nhân này"
+                    >
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="w-6 h-6 rounded-full bg-[#33CC99]/15 text-[#1a7053] text-xs font-bold flex items-center justify-center group-hover:bg-[#33CC99] group-hover:text-white transition-colors">
+                            {idx + 1}
+                          </span>
+                          <h5 className="font-bold text-slate-900 text-base group-hover:text-[#1a7053] transition-colors flex items-center gap-1.5">
+                            <span>{item.patientName}</span>
+                            <ArrowUpRight className="w-4 h-4 text-[#33CC99] opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </h5>
+                          {item.patientId && (
+                            <span className="text-[11px] bg-slate-100 text-slate-600 font-mono font-semibold px-2 py-0.5 rounded">
+                              Mã: {item.patientId}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2.5">
+                          <div className="text-right">
+                            <span className="text-xs text-slate-500 block">Doanh thu ca này</span>
+                            <span className="text-base font-black text-emerald-600 font-mono">
+                              {formatVND(item.revenue)}
+                            </span>
+                          </div>
+
+                        </div>
+                      </div>
+
+                      <div className="text-xs text-slate-600 grid grid-cols-1 sm:grid-cols-2 gap-2 bg-slate-50 p-3 rounded-xl">
+                        <div>
+                          <span className="text-slate-500">Bác sĩ khám:</span>{" "}
+                          <strong className="text-slate-800">{item.doctorName || "BS. Võ Tấn Nam"}</strong>
+                        </div>
+                        <div>
+                          <span className="text-slate-500">Chẩn đoán:</span>{" "}
+                          <strong className="text-[#1a7053]">{item.diagnosis || "Chưa có chẩn đoán"}</strong>
+                        </div>
+                        <div>
+                          <span className="text-slate-500">Tiền dịch vụ:</span>{" "}
+                          <strong className="text-slate-800">{formatVND(item.serviceFee)}</strong>
+                        </div>
+                        <div>
+                          <span className="text-slate-500">Tiền thuốc:</span>{" "}
+                          <strong className="text-slate-800">{formatVND(item.medicineFee)}</strong>
+                        </div>
+                      </div>
+
+                      {/* Danh sách thuốc đã kê */}
+                      {Array.isArray(item.medicines) && item.medicines.length > 0 && item.medicines.some((m: any) => m.medicineName) && (
+                        <div className="text-xs border-t border-slate-100 pt-2">
+                          <span className="font-semibold text-slate-700 block mb-1.5 flex items-center gap-1">
+                            <Pill className="w-3.5 h-3.5 text-[#33CC99]" />
+                            Toa thuốc đã kê:
+                          </span>
+                          <div className="space-y-1 pl-4">
+                            {item.medicines.filter((m: any) => m.medicineName).map((med: any, mIdx: number) => (
+                              <div key={mIdx} className="text-slate-600 flex justify-between">
+                                <span>• {med.medicineName}</span>
+                                <span className="font-mono text-slate-500">Số lượng: {med.medicineQuantity || 1} {med.medicineUnit || "viên"}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 border-t border-slate-200 bg-slate-50 flex justify-between items-center">
+                <Link
+                  href="/diagnosis"
+                  className="text-xs font-semibold text-[#1a7053] hover:text-[#13533e] flex items-center gap-1"
+                >
+                  <span>Đến phần Khám & Kê toa</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+                <button
+                  onClick={() => setViewingDayModal(null)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold cursor-pointer transition-all"
+                >
+                  Đóng
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ======================= MODAL XEM CHI TIẾT KHÁM & KÊ TOA (ĐƠN THUỐC) TRỰC TIẾP TRÊN TRANG TỔNG KẾT ======================= */}
       {viewingPrescription && (
         <div className="prescription-modal-backdrop fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[60] p-4" onClick={() => setViewingPrescription(null)}>
-          <div ref={prescriptionModalRef} className="prescription-modal-container bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="prescription-sheet p-8 bg-white text-slate-800 relative rounded-2xl">
+          <div ref={prescriptionModalRef} className="prescription-modal-container bg-white rounded-xl shadow-xl max-w-xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="prescription-sheet p-6 sm:p-8 bg-white text-slate-800 relative rounded-xl">
               {/* Nút đóng */}
               <button
                 type="button"
@@ -1360,11 +1360,11 @@ export default function SummaryPage() {
               </button>
 
               {/* Header Đơn Thuốc */}
-              <div className="text-center mb-8 mt-2 px-8">
-                <h3 className="text-base sm:text-lg font-bold uppercase tracking-wide text-slate-700 mb-1.5">
+              <div className="text-center mb-4 mt-1 px-4">
+                <h3 className="text-sm sm:text-base font-bold uppercase tracking-wide text-slate-700 mb-1">
                   PHÒNG KHÁM NHI BS NAM – BS PHỤNG
                 </h3>
-                <h2 className="text-3xl font-bold uppercase tracking-wider text-slate-900">
+                <h2 className="text-2xl font-bold uppercase tracking-wider text-slate-900">
                   ĐƠN THUỐC
                 </h2>
               </div>
@@ -1375,22 +1375,22 @@ export default function SummaryPage() {
                 const ptCode = getPatientCode(viewingPrescription);
                 const displayPtCode = ptCode !== "-" ? ptCode : (viewingPrescription.patientId || (pt as any).id || "");
                 return (
-                  <div className="space-y-4 mb-8 text-base">
-                    <div className="flex gap-6 items-end">
+                  <div className="space-y-2.5 mb-4 text-sm">
+                    <div className="flex gap-4 items-end">
                       <div className="flex gap-2 items-end flex-1">
                         <span className="font-semibold whitespace-nowrap">Họ tên:</span>
                         <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2 font-medium">
                           <span style={{ position: "relative", top: "3px" }}>{viewingPrescription.patientName}</span>
                         </span>
                       </div>
-                      <div className="flex gap-2 items-end w-44 shrink-0">
+                      <div className="flex gap-2 items-end w-36 shrink-0">
                         <span className="font-semibold whitespace-nowrap">Mã BN:</span>
                         <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2 font-mono font-bold text-blue-700">
                           <span style={{ position: "relative", top: "3px" }}>{displayPtCode}</span>
                         </span>
                       </div>
                     </div>
-                    <div className="flex gap-6 items-end">
+                    <div className="flex gap-4 items-end">
                       <div className="flex gap-2 items-end flex-1 whitespace-nowrap">
                         <span className="font-semibold whitespace-nowrap">Ngày sinh:</span>
                         <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2 whitespace-nowrap">
@@ -1399,34 +1399,34 @@ export default function SummaryPage() {
                           </span>
                         </span>
                       </div>
-                      <div className="flex gap-2 items-end w-44 shrink-0">
+                      <div className="flex gap-2 items-end w-36 shrink-0">
                         <span className="font-semibold whitespace-nowrap">Giới tính:</span>
-                        <span className="flex-1 border-b-2 border-dotted border-slate-300 flex items-center justify-around pb-1 text-sm whitespace-nowrap">
+                        <span className="flex-1 border-b-2 border-dotted border-slate-300 flex items-center justify-around pb-1 text-xs whitespace-nowrap">
                           <label className="flex items-center gap-1"><input type="checkbox" className="w-3 h-3" readOnly checked={(pt as any).gender === "Nam"} /> Nam</label>
                           <label className="flex items-center gap-1"><input type="checkbox" className="w-3 h-3" readOnly checked={(pt as any).gender === "Nữ"} /> Nữ</label>
                         </span>
                       </div>
                     </div>
-                    <div className="flex gap-4 items-end flex-wrap">
-                      <div className="flex gap-2 items-end">
+                    <div className="flex gap-3 items-end flex-wrap text-xs sm:text-sm">
+                      <div className="flex gap-1.5 items-end">
                         <span className="font-semibold whitespace-nowrap">Cân nặng:</span>
-                        <span className="border-b-2 border-dotted border-slate-300 px-2 min-w-[50px]">
+                        <span className="border-b-2 border-dotted border-slate-300 px-1.5 min-w-[40px]">
                           <span style={{ position: "relative", top: "3px" }}>
                             {viewingPrescription.weight || (pt as any).weight ? `${viewingPrescription.weight || (pt as any).weight} kg` : ""}
                           </span>
                         </span>
                       </div>
-                      <div className="flex gap-2 items-end">
+                      <div className="flex gap-1.5 items-end">
                         <span className="font-semibold whitespace-nowrap">Chiều cao:</span>
-                        <span className="border-b-2 border-dotted border-slate-300 px-2 min-w-[50px]">
+                        <span className="border-b-2 border-dotted border-slate-300 px-1.5 min-w-[40px]">
                           <span style={{ position: "relative", top: "3px" }}>
                             {(pt as any).height ? `${(pt as any).height} cm` : ""}
                           </span>
                         </span>
                       </div>
-                      <div className="flex gap-2 items-end">
+                      <div className="flex gap-1.5 items-end">
                         <span className="font-semibold whitespace-nowrap">BMI:</span>
-                        <span className="border-b-2 border-dotted border-slate-300 px-2 min-w-[40px]">
+                        <span className="border-b-2 border-dotted border-slate-300 px-1.5 min-w-[35px]">
                           <span style={{ position: "relative", top: "3px" }}>
                             {(() => {
                               const curW = viewingPrescription.weight || (pt as any).weight;
@@ -1436,9 +1436,9 @@ export default function SummaryPage() {
                           </span>
                         </span>
                       </div>
-                      <div className="flex gap-2 items-end">
+                      <div className="flex gap-1.5 items-end">
                         <span className="font-semibold whitespace-nowrap">NĐ:</span>
-                        <span className="border-b-2 border-dotted border-slate-300 px-2 min-w-[40px]">
+                        <span className="border-b-2 border-dotted border-slate-300 px-1.5 min-w-[35px]">
                           <span style={{ position: "relative", top: "3px" }}>
                             {(pt as any).temperature ? `${(pt as any).temperature} °C` : ""}
                           </span>
@@ -1455,7 +1455,7 @@ export default function SummaryPage() {
                 );
               })()}
 
-              <div className="flex gap-2 items-end mb-3">
+              <div className="flex gap-2 items-end mb-2 text-sm">
                 <span className="font-semibold whitespace-nowrap">Chẩn đoán:</span>
                 <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2 font-medium">
                   <span style={{ position: "relative", top: "3px" }}>{viewingPrescription.diagnosis}</span>
@@ -1463,7 +1463,7 @@ export default function SummaryPage() {
               </div>
 
               {viewingPrescription.medicalHistory && (
-                <div className="flex gap-2 items-end mb-6">
+                <div className="flex gap-2 items-end mb-3 text-sm">
                   <span className="font-semibold whitespace-nowrap">Bệnh sử – Khám:</span>
                   <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2">
                     <span style={{ position: "relative", top: "3px" }}>{viewingPrescription.medicalHistory}</span>
@@ -1472,23 +1472,28 @@ export default function SummaryPage() {
               )}
 
               {/* Danh sách thuốc */}
-              <div className="mb-10 min-h-[200px]">
-                <h3 className="font-bold text-lg mb-4">Thuốc điều trị:</h3>
-                <div className="space-y-6">
+              <div className="mb-4">
+                <h3 className="font-bold text-sm mb-2 uppercase tracking-wide text-slate-800">Thuốc điều trị:</h3>
+                <div className="space-y-3">
                   {getPrescriptionDetails(viewingPrescription).map((item: any, idx: number) => (
-                    <div key={idx} className="prescription-item text-base">
-                      <div className="font-bold mb-2">
+                    <div key={idx} className="prescription-item text-sm">
+                      <div className="font-bold mb-1">
                         {idx + 1}/ {item.name}
                       </div>
-                      <div className="pl-6 text-slate-700 flex flex-wrap gap-y-2 items-end">
-                        {item.notes && <span className="w-full text-slate-600 italic mb-1">- Ghi chú: {item.notes}</span>}
-                        <span className="whitespace-nowrap">- Số lượng:</span>
-                        <span className="border-b-2 border-dotted border-slate-300 min-w-[60px] text-center inline-block font-medium px-2">
-                          <span style={{ position: "relative", top: "3px" }}>{item.quantity}</span>
-                        </span>
-                        <span className="mr-6">{item.unit}</span>
-
-                        <span className="whitespace-nowrap">Uống mỗi ngày {item.medTimes || "...."} lần, mỗi lần {item.medAmount || "...."} {item.medCustomUnit || item.unit || "viên"}, trong {item.medDays || "...."} ngày.</span>
+                      <div className="pl-4 text-slate-700 space-y-1">
+                        {item.notes && <div className="text-slate-600 italic text-xs mb-0.5">- Ghi chú: {item.notes}</div>}
+                        <div className="flex flex-wrap gap-x-3 gap-y-1 items-baseline">
+                          <div className="flex items-baseline gap-1 shrink-0">
+                            <span>- Số lượng:</span>
+                            <span className="border-b-2 border-dotted border-slate-300 min-w-[44px] text-center font-bold px-1.5">
+                              <span style={{ position: "relative", top: "2px" }}>{item.quantity}</span>
+                            </span>
+                            <span>{item.unit}</span>
+                          </div>
+                          <div className="flex-1 min-w-[200px]">
+                            <span>Uống mỗi ngày {item.medTimes || "...."} lần, mỗi lần {item.medAmount || "...."} {item.medCustomUnit || item.unit || "viên"}, trong {item.medDays || "...."} ngày.</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -1496,15 +1501,15 @@ export default function SummaryPage() {
               </div>
 
               {/* Ghi chú & Tái khám */}
-              <div className="space-y-4 mb-6 text-base">
+              <div className="space-y-2 mb-3 text-sm">
                 <div className="flex gap-2 items-end">
-                  <span className="font-bold whitespace-nowrap">Ghi chú:</span>
+                  <span className="font-semibold whitespace-nowrap">Ghi chú:</span>
                   <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2">
                     <span style={{ position: "relative", top: "3px" }}>{viewingPrescription.notes}</span>
                   </span>
                 </div>
                 <div className="flex gap-2 items-end">
-                  <span className="font-bold whitespace-nowrap text-red-600">Tái khám:</span>
+                  <span className="font-semibold whitespace-nowrap text-red-600">Tái khám:</span>
                   <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2 text-slate-800 font-medium">
                     <span style={{ position: "relative", top: "3px" }}>{viewingPrescription.followUpDate}</span>
                   </span>
@@ -1512,9 +1517,9 @@ export default function SummaryPage() {
               </div>
 
               {/* Ngày khám & Bác sĩ ký tên ở góc phải dưới cùng */}
-              <div className="prescription-footer flex justify-end mt-6 mb-8">
-                <div className="text-center min-w-[240px]">
-                  <p className="text-sm italic font-bold text-amber-950 mb-1 inline-block bg-yellow-200 px-3 py-1 rounded-md border border-yellow-300">
+              <div className="prescription-footer flex justify-end mt-2 mb-3">
+                <div className="text-center min-w-[200px]">
+                  <p className="text-xs italic text-slate-600 mb-0.5">
                     {(() => {
                       const formatted = formatDateDisplay(viewingPrescription.date);
                       const parts = formatted ? formatted.split(" ")[0].split("-") : null;
@@ -1524,23 +1529,23 @@ export default function SummaryPage() {
                       return formatted ? `Ngày khám: ${formatted}` : "Ngày .... tháng .... năm 20...";
                     })()}
                   </p>
-                  <p className="font-bold uppercase text-slate-800 text-sm tracking-wide">
+                  <p className="font-bold uppercase text-slate-800 text-xs tracking-wide">
                     Bác sĩ khám bệnh
                   </p>
-                  <p className="text-xs italic text-slate-500">
+                  <p className="text-[11px] italic text-slate-500">
                     (Ký, ghi rõ họ tên)
                   </p>
-                  <div className="h-20 flex items-end justify-center">
+                  <div className="h-14 flex items-end justify-center">
                     {/* Khoảng trống để ký tên */}
                   </div>
-                  <p className="font-bold text-slate-900 text-base">
+                  <p className="font-bold text-slate-900 text-sm">
                     {viewingPrescription.doctorName || "BS. Võ Tấn Nam"}
                   </p>
                 </div>
               </div>
 
               {/* Các nút hành động */}
-              <div className="flex justify-between items-center mt-6 pt-4 border-t border-slate-200 print:hidden">
+              <div className="flex justify-between items-center mt-4 pt-3 border-t border-slate-200 print:hidden">
                 <button
                   type="button"
                   onClick={() => setViewingPrescription(null)}

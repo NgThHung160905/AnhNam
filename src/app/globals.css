@@ -86,11 +86,11 @@ input[type="number"] {
 }
 
 /* ==========================================================================
-   PRINT STYLES: Đảm bảo in đơn thuốc và báo cáo hiển thị đầy đủ, đẹp và chuẩn A4
+   PRINT STYLES: Đảm bảo in đơn thuốc và báo cáo hiển thị đầy đủ, đẹp và chuẩn A5
    ========================================================================== */
 @media print {
   @page {
-    size: A4 portrait;
+    size: A5 portrait;
     /* margin: 0 loại bỏ hoàn toàn tiêu đề 'Quản lý Phòng Khám' và ngày giờ/URL mặc định của trình duyệt */
     margin: 0;
   }
@@ -137,7 +137,7 @@ input[type="number"] {
     width: 100% !important;
   }
 
-  /* Canh giữa tuyệt đối cho Bill Đơn Thuốc trên trang A4 */
+  /* Canh giữa tuyệt đối cho Bill Đơn Thuốc trên trang A5 */
   .prescription-modal-backdrop {
     position: static !important;
     display: flex !important;
@@ -158,7 +158,7 @@ input[type="number"] {
     position: static !important;
     display: block !important;
     width: 100% !important;
-    max-width: 190mm !important;
+    max-width: 148mm !important;
     margin: 0 auto !important;
     padding: 0 !important;
     background: #ffffff !important;
@@ -170,13 +170,15 @@ input[type="number"] {
 
   .prescription-sheet {
     margin: 0 auto !important;
-    max-width: 180mm !important;
+    max-width: 148mm !important;
     width: 100% !important;
-    padding: 15mm 15mm !important;
+    padding: 8mm 10mm !important;
     background: #ffffff !important;
     border-radius: 0 !important;
     box-shadow: none !important;
     box-sizing: border-box !important;
+    font-size: 13px !important;
+    line-height: 1.35 !important;
   }
 
   /* Tránh ngắt trang giữa chừng các dòng thuốc hoặc khu vực ký tên bác sĩ */
