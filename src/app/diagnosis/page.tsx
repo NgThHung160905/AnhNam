@@ -177,13 +177,29 @@ export default function DiagnosisPage() {
     }
   }, [viewingPrescription]);
 
-  // Xử lý in đơn thuốc: Cuộn về đỉnh tuyệt đối và ẩn tiêu đề trình duyệt trước khi kích hoạt hộp thoại in
+  // Xử lý in đơn thuốc: Cuộn về đỉnh tuyệt đối và thiết lập tên file xuất PDF theo "Mã BN_Họ Tên"
   const handlePrintPrescription = () => {
     if (prescriptionModalRef.current) {
       prescriptionModalRef.current.scrollTop = 0;
     }
     const originalTitle = document.title;
-    document.title = "";
+    if (viewingPrescription) {
+      const pt = savedPatients.find((p: any) => viewingPrescription.patientId ? p.id === viewingPrescription.patientId : p.name === viewingPrescription.patientName) || {};
+      const ptCode = getPatientCode(viewingPrescription);
+      const displayPtCode = ptCode !== "-" ? ptCode : (viewingPrescription.patientId || (pt as any).id || "");
+      const patientName = (viewingPrescription.patientName || "").trim();
+      const safeCode = (displayPtCode || "").replace(/[\\/:*?"<>|]/g, "_").trim();
+      const safeName = (patientName || "").replace(/[\\/:*?"<>|]/g, "_").trim();
+      if (safeCode && safeName) {
+        document.title = `${safeCode}_${safeName}`;
+      } else if (safeName) {
+        document.title = safeName;
+      } else if (safeCode) {
+        document.title = safeCode;
+      } else {
+        document.title = "DonThuoc";
+      }
+    }
     window.scrollTo(0, 0);
     setTimeout(() => {
       window.print();
@@ -202,6 +218,7 @@ export default function DiagnosisPage() {
   const [savedPatients, setSavedPatients] = useState<any[]>([]);
 
   const getPatientCode = (diag: any) => {
+    if (!diag) return "-";
     if (diag.patientId) return formatPatientCode(diag.patientId);
     if (diag.patientName) {
       const found = savedPatients.find((p: any) => p.name?.trim().toLowerCase() === diag.patientName?.trim().toLowerCase());

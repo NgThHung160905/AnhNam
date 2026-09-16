@@ -181,12 +181,25 @@ export default function PatientMedicalSummaryModal({
     return formatted || dobStr;
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   const displayPatientCode = formatPatientCode(patient?.id);
   const ageString = patient?.dob ? calculateAge(patient.dob) : "";
+
+  const handlePrint = () => {
+    const originalTitle = document.title;
+    const safeCode = (displayPatientCode || "").replace(/[\\/:*?"<>|]/g, "_").trim();
+    const safeName = (patient?.name || "").replace(/[\\/:*?"<>|]/g, "_").trim();
+    if (safeCode && safeName) {
+      document.title = `${safeCode}_${safeName}`;
+    } else if (safeName) {
+      document.title = safeName;
+    } else if (safeCode) {
+      document.title = safeCode;
+    }
+    window.print();
+    setTimeout(() => {
+      document.title = originalTitle;
+    }, 1000);
+  };
 
   // Mở popup sửa
   const handleOpenEdit = (visit: MedicalVisit) => {
