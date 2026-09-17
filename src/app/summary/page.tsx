@@ -1379,7 +1379,13 @@ export default function SummaryPage() {
       {viewingPrescription && (() => {
         const medList = getPrescriptionDetails(viewingPrescription);
         const medCount = medList.length;
-        const denseClass = medCount >= 7 ? "dense-mode ultra-dense-mode" : medCount >= 5 ? "dense-mode" : "";
+        const denseClass = medCount >= 7 
+          ? "dense-mode ultra-dense-mode" 
+          : medCount >= 5 
+            ? "dense-mode" 
+            : medCount === 4 
+              ? "standard-mode" 
+              : "spacious-mode";
 
         return (
           <div className="prescription-modal-backdrop fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[60] p-4" onClick={() => setViewingPrescription(null)}>
