@@ -1498,21 +1498,21 @@ export default function SummaryPage() {
                     );
                   })()}
 
-                  <div className="diagnosis-box flex gap-2 items-baseline w-full min-w-0 mb-2.5 text-[14px] sm:text-[15px]">
-                    <span className="font-bold whitespace-nowrap text-slate-800 shrink-0">Chẩn đoán:</span>
-                    <span className="flex-1 min-w-0 border-b-2 border-dotted border-slate-300 px-2 font-medium break-all">
-                      <span style={{ position: "relative", top: "3px", wordBreak: "break-word", overflowWrap: "anywhere" }}>{viewingPrescription.diagnosis}</span>
-                    </span>
-                  </div>
-
                   {viewingPrescription.medicalHistory && (
-                    <div className="diagnosis-box flex gap-2 items-baseline w-full min-w-0 text-[14px] sm:text-[15px]">
+                    <div className="diagnosis-box flex gap-2 items-baseline w-full min-w-0 mb-2.5 text-[14px] sm:text-[15px]">
                       <span className="font-bold whitespace-nowrap text-slate-800 shrink-0">Bệnh sử – Khám:</span>
                       <span className="flex-1 min-w-0 border-b-2 border-dotted border-slate-300 px-2 break-all">
                         <span style={{ position: "relative", top: "3px", wordBreak: "break-word", overflowWrap: "anywhere" }}>{viewingPrescription.medicalHistory}</span>
                       </span>
                     </div>
                   )}
+
+                  <div className="diagnosis-box flex gap-2 items-baseline w-full min-w-0 text-[14px] sm:text-[15px]">
+                    <span className="font-bold whitespace-nowrap text-slate-800 shrink-0">Chẩn đoán:</span>
+                    <span className="flex-1 min-w-0 border-b-2 border-dotted border-slate-300 px-2 font-medium break-all">
+                      <span style={{ position: "relative", top: "3px", wordBreak: "break-word", overflowWrap: "anywhere" }}>{viewingPrescription.diagnosis}</span>
+                    </span>
+                  </div>
                 </div>
 
                 {/* Danh sách thuốc */}
@@ -1544,14 +1544,8 @@ export default function SummaryPage() {
                   </div>
                 </div>
 
-                {/* Ghi chú & Tái khám */}
-                <div className="notes-box space-y-2 mb-4 text-[13px] sm:text-[14px]">
-                  <div className="flex gap-2 items-baseline w-full min-w-0">
-                    <span className="font-bold whitespace-nowrap text-slate-800 shrink-0">Ghi chú:</span>
-                    <span className="flex-1 min-w-0 border-b-2 border-dotted border-slate-300 px-2 font-medium break-all text-slate-800">
-                      <span style={{ position: "relative", top: "3px", wordBreak: "break-word", overflowWrap: "anywhere" }}>{viewingPrescription.notes}</span>
-                    </span>
-                  </div>
+                {/* Dòng Tái khám */}
+                <div className="followup-box mb-2 text-[13px] sm:text-[14px]">
                   <div className="flex gap-2 items-baseline w-full min-w-0">
                     <span className="font-bold whitespace-nowrap text-red-600 shrink-0">Tái khám:</span>
                     <span className="flex-1 min-w-0 border-b-2 border-dotted border-slate-300 px-2 text-slate-900 font-bold break-all">
@@ -1560,9 +1554,75 @@ export default function SummaryPage() {
                   </div>
                 </div>
 
-                {/* Ngày khám & Bác sĩ ký tên ở góc phải dưới cùng */}
-                <div className="prescription-footer flex justify-end mt-2 mb-1">
-                  <div className="text-center min-w-[200px]">
+                {/* Footer đơn thuốc: Ghi chú ở bên trái (ô riêng, không viền) và Bác sĩ ký tên ở bên phải */}
+                <div className="prescription-footer flex justify-between items-start gap-4 mt-2 mb-1">
+                  {/* Ô Ghi chú riêng bên trái - không viền */}
+                  <div className="prescription-notes-col flex-1 min-w-0 text-left">
+                    <div className="font-bold text-slate-900 mb-1.5 text-xs sm:text-[13px]">Ghi chú:</div>
+                    {(() => {
+                      const rawNotes = viewingPrescription.notes ? viewingPrescription.notes.trim() : "";
+                      const noteLines = rawNotes
+                        ? rawNotes.split("\n").map((l: string) => l.trim()).filter(Boolean)
+                        : [];
+
+                      if (noteLines.length > 0) {
+                        const hasExplicitBullets = noteLines.some((l: string) => /^[-•*]/.test(l));
+                        return (
+                          <div className="space-y-0.5 text-slate-800 font-medium">
+                            {noteLines.map((line: string, idx: number) => {
+                              const isBullet = /^[-•*]\s*/.test(line);
+                              if (hasExplicitBullets) {
+                                if (isBullet) {
+                                  return (
+                                    <div key={idx} className="flex items-baseline gap-1.5 pl-1.5 leading-snug">
+                                      <span className="font-bold text-slate-700 shrink-0">-</span>
+                                      <span className="break-all" style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}>
+                                        {line.replace(/^[-•*]\s*/, "")}
+                                      </span>
+                                    </div>
+                                  );
+                                }
+                                return (
+                                  <div key={idx} className="leading-snug break-all text-slate-800" style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}>
+                                    {line}
+                                  </div>
+                                );
+                              }
+
+                              return (
+                                <div key={idx} className="flex items-baseline gap-1.5 leading-snug">
+                                  <span className="font-bold text-slate-700 shrink-0">-</span>
+                                  <span className="break-all" style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}>
+                                    {line}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="space-y-2 sm:space-y-2.5 text-slate-700 font-medium">
+                          <div className="flex items-baseline gap-1.5">
+                            <span className="font-bold text-slate-700 shrink-0">-</span>
+                          </div>
+                          <div className="flex items-baseline gap-1.5">
+                            <span className="font-bold text-slate-700 shrink-0">-</span>
+                          </div>
+                          <div className="flex items-baseline gap-1.5">
+                            <span className="font-bold text-slate-700 shrink-0">-</span>
+                          </div>
+                          <div className="flex items-baseline gap-1.5">
+                            <span className="font-bold text-slate-700 shrink-0">-</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Bác sĩ khám bệnh & Ký tên bên phải */}
+                  <div className="text-center min-w-[200px] shrink-0">
                     <p className="text-xs italic text-slate-600 mb-0.5">
                       {(() => {
                         const formatted = formatDateDisplay(viewingPrescription.date);

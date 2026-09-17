@@ -5,6 +5,7 @@ import { Plus, Search, FileText, Edit2, Trash2, X, ClipboardList, Stethoscope, P
 import { formatPatientCode, syncDiagnosisToMedicalSummary, removeDiagnosisFromMedicalSummary } from "@/lib/medicalSummaryService";
 import { freezePrescriptionMedicines, getHistoricalMedicinePrice, backfillDiagnosesMedicinePrices } from "@/lib/medicinePriceService";
 import DatePicker, { calculateAge, formatDisplayDate } from "@/components/DatePicker";
+import { DEFAULT_NOTE_TEMPLATES, findNoteTemplateByCode } from "@/lib/noteTemplates";
 
 const EMPTY_MED_LINE = { medicineName: "", medicineQuantity: 1, price: 0, medDays: "", medTimes: "", medAmount: "", medicineNote: "", medCustomUnit: "viên" };
 
@@ -177,6 +178,21 @@ export default function DiagnosisPage() {
       prescriptionModalRef.current.scrollTop = 0;
     }
   }, [viewingPrescription]);
+
+  // Quản lý gợi ý mã dặn dò trực tiếp trên ô Lưu Ý
+  const [showNoteSuggestions, setShowNoteSuggestions] = useState(false);
+  const [noteHighlightedIndex, setNoteHighlightedIndex] = useState(-1);
+  const noteDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (noteDropdownRef.current && !noteDropdownRef.current.contains(e.target as Node)) {
+        setShowNoteSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Xử lý in đơn thuốc: Cuộn về đỉnh tuyệt đối và thiết lập tên file xuất PDF theo "Mã BN_Họ Tên"
   const handlePrintPrescription = () => {
@@ -1091,11 +1107,6 @@ export default function DiagnosisPage() {
                   </div>
 
                   <div className="sm:col-span-3">
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Chẩn đoán</label>
-                    <input type="text" value={newDiag.diagnosis} onChange={e => setNewDiag({ ...newDiag, diagnosis: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-slate-900"
-                      placeholder="Bệnh..." />
-                  </div>
-                  <div className="sm:col-span-3">
                     <label className="block text-sm font-medium text-slate-700 mb-1">Bệnh sử – Khám</label>
                     <textarea
                       rows={2}
@@ -1104,6 +1115,11 @@ export default function DiagnosisPage() {
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-slate-900 resize-none"
                       placeholder="Nhập bệnh sử, triệu chứng và kết quả khám (ví dụ: Sốt 3 ngày, ho...)"
                     />
+                  </div>
+                  <div className="sm:col-span-3">
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Chẩn đoán</label>
+                    <input type="text" value={newDiag.diagnosis} onChange={e => setNewDiag({ ...newDiag, diagnosis: e.target.value })} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-slate-900"
+                      placeholder="Bệnh..." />
                   </div>
                   <div className="sm:col-span-3 grid grid-cols-2 gap-4">
                     <div>
@@ -1372,11 +1388,125 @@ export default function DiagnosisPage() {
               </div>
 
               {/* Lưu Ý */}
-              <div className="bg-yellow-50/30 p-4 rounded-xl border border-yellow-200">
-                <h4 className="text-sm font-semibold text-yellow-800 mb-3 flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-yellow-600" /> Lưu Ý
-                </h4>
-                <textarea value={newDiag.notes} onChange={e => setNewDiag({ ...newDiag, notes: e.target.value })} rows={3} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 bg-white text-slate-900 text-sm resize-none" placeholder="Ghi chú thêm cho bệnh nhân..."></textarea>
+              <div className="bg-yellow-50/30 p-4 rounded-xl border border-yellow-200 relative" ref={noteDropdownRef}>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-sm font-semibold text-yellow-800 flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-yellow-600" /> Lưu Ý
+                  </h4>
+                  {newDiag.notes && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewDiag({ ...newDiag, notes: "" });
+                        setShowNoteSuggestions(true);
+                      }}
+                      className="text-xs text-yellow-700 hover:text-red-600 font-medium hover:underline cursor-pointer"
+                    >
+                      Xóa nội dung
+                    </button>
+                  )}
+                </div>
+
+                <div className="relative">
+                  <textarea
+                    value={newDiag.notes}
+                    onFocus={() => {
+                      if (!newDiag.notes || newDiag.notes.trim().length < 30) {
+                        setShowNoteSuggestions(true);
+                      }
+                    }}
+                    onClick={() => {
+                      if (!newDiag.notes || newDiag.notes.trim().length < 30) {
+                        setShowNoteSuggestions(true);
+                      }
+                    }}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const trimmed = val.trim().toLowerCase();
+                      const matched = findNoteTemplateByCode(trimmed);
+                      if (matched) {
+                        setNewDiag({ ...newDiag, notes: matched.content });
+                        setShowNoteSuggestions(false);
+                        return;
+                      }
+                      setNewDiag({ ...newDiag, notes: val });
+                      if (!val || val.length < 30) {
+                        setShowNoteSuggestions(true);
+                      } else {
+                        setShowNoteSuggestions(false);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (showNoteSuggestions) {
+                        const filtered = DEFAULT_NOTE_TEMPLATES.filter(tmpl => {
+                          const q = newDiag.notes.trim().toLowerCase();
+                          if (!q) return true;
+                          return (
+                            tmpl.code.toLowerCase().includes(q) ||
+                            tmpl.shortCode.toLowerCase().includes(q) ||
+                            tmpl.aliases.some(a => a.toLowerCase().includes(q))
+                          );
+                        });
+
+                        if (e.key === "ArrowDown") {
+                          e.preventDefault();
+                          setNoteHighlightedIndex(prev => Math.min(prev + 1, filtered.length - 1));
+                        } else if (e.key === "ArrowUp") {
+                          e.preventDefault();
+                          setNoteHighlightedIndex(prev => Math.max(prev - 1, 0));
+                        } else if (e.key === "Enter" && noteHighlightedIndex >= 0 && noteHighlightedIndex < filtered.length) {
+                          e.preventDefault();
+                          setNewDiag({ ...newDiag, notes: filtered[noteHighlightedIndex].content });
+                          setShowNoteSuggestions(false);
+                        } else if (e.key === "Escape") {
+                          setShowNoteSuggestions(false);
+                        }
+                      }
+                    }}
+                    rows={4}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 bg-white text-slate-900 text-sm leading-relaxed resize-none"
+                    placeholder="Nhập mã (ddc, sxh, tcm, hh, th, du) hoặc nhấp vào để chọn gợi ý dặn dò..."
+                  />
+
+                  {/* Dropdown gợi ý mã dặn dò xuất hiện ngay khi nhấp vào ô Lưu Ý */}
+                  {showNoteSuggestions && (
+                    <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white border border-yellow-300 rounded-lg shadow-xl overflow-hidden divide-y divide-slate-100 max-h-60 overflow-y-auto">
+                      <div className="bg-yellow-50 px-3 py-1.5 text-[11px] font-bold text-yellow-900 uppercase tracking-wider flex items-center justify-between border-b border-yellow-200">
+                        <span>Gợi ý mã dặn dò (Nhấp để tự động điền)</span>
+                        <span className="text-[10px] text-yellow-700 font-normal lowercase">nhấn Esc để đóng</span>
+                      </div>
+                      {DEFAULT_NOTE_TEMPLATES.filter(tmpl => {
+                        const q = newDiag.notes.trim().toLowerCase();
+                        if (!q) return true;
+                        return (
+                          tmpl.code.toLowerCase().includes(q) ||
+                          tmpl.shortCode.toLowerCase().includes(q) ||
+                          tmpl.aliases.some(a => a.toLowerCase().includes(q))
+                        );
+                      }).map((tmpl, idx) => (
+                        <div
+                          key={tmpl.code}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            setNewDiag({ ...newDiag, notes: tmpl.content });
+                            setShowNoteSuggestions(false);
+                          }}
+                          className={`p-2.5 cursor-pointer transition-colors ${
+                            noteHighlightedIndex === idx ? "bg-yellow-100 text-yellow-950" : "hover:bg-yellow-50 text-slate-800"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-bold text-xs sm:text-sm text-slate-900">{tmpl.code}</span>
+                            <span className="font-mono text-[10px] font-bold bg-yellow-100 text-yellow-900 px-1.5 py-0.5 rounded border border-yellow-300">
+                              Mã: {tmpl.shortCode}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{tmpl.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {error && <div className="text-red-500 text-sm font-medium mt-4">{error}</div>}
@@ -1512,21 +1642,21 @@ export default function DiagnosisPage() {
                     );
                   })()}
 
-                  <div className="diagnosis-box flex gap-2 items-baseline w-full min-w-0 mb-2.5 text-[14px] sm:text-[15px]">
-                    <span className="font-bold whitespace-nowrap text-slate-800 shrink-0">Chẩn đoán:</span>
-                    <span className="flex-1 min-w-0 border-b-2 border-dotted border-slate-300 px-2 font-medium break-all">
-                      <span style={{ position: "relative", top: "3px", wordBreak: "break-word", overflowWrap: "anywhere" }}>{viewingPrescription.diagnosis}</span>
-                    </span>
-                  </div>
-
                   {viewingPrescription.medicalHistory && (
-                    <div className="diagnosis-box flex gap-2 items-baseline w-full min-w-0 text-[14px] sm:text-[15px]">
+                    <div className="diagnosis-box flex gap-2 items-baseline w-full min-w-0 mb-2.5 text-[14px] sm:text-[15px]">
                       <span className="font-bold whitespace-nowrap text-slate-800 shrink-0">Bệnh sử – Khám:</span>
                       <span className="flex-1 min-w-0 border-b-2 border-dotted border-slate-300 px-2 break-all">
                         <span style={{ position: "relative", top: "3px", wordBreak: "break-word", overflowWrap: "anywhere" }}>{viewingPrescription.medicalHistory}</span>
                       </span>
                     </div>
                   )}
+
+                  <div className="diagnosis-box flex gap-2 items-baseline w-full min-w-0 text-[14px] sm:text-[15px]">
+                    <span className="font-bold whitespace-nowrap text-slate-800 shrink-0">Chẩn đoán:</span>
+                    <span className="flex-1 min-w-0 border-b-2 border-dotted border-slate-300 px-2 font-medium break-all">
+                      <span style={{ position: "relative", top: "3px", wordBreak: "break-word", overflowWrap: "anywhere" }}>{viewingPrescription.diagnosis}</span>
+                    </span>
+                  </div>
                 </div>
 
                 {/* Danh sách thuốc */}
@@ -1558,14 +1688,8 @@ export default function DiagnosisPage() {
                   </div>
                 </div>
 
-                {/* Ghi chú & Tái khám */}
-                <div className="notes-box space-y-2 mb-4 text-[13px] sm:text-[14px]">
-                  <div className="flex gap-2 items-baseline w-full min-w-0">
-                    <span className="font-bold whitespace-nowrap text-slate-800 shrink-0">Ghi chú:</span>
-                    <span className="flex-1 min-w-0 border-b-2 border-dotted border-slate-300 px-2 font-medium break-all text-slate-800">
-                      <span style={{ position: "relative", top: "3px", wordBreak: "break-word", overflowWrap: "anywhere" }}>{viewingPrescription.notes}</span>
-                    </span>
-                  </div>
+                {/* Dòng Tái khám */}
+                <div className="followup-box mb-2 text-[13px] sm:text-[14px]">
                   <div className="flex gap-2 items-baseline w-full min-w-0">
                     <span className="font-bold whitespace-nowrap text-red-600 shrink-0">Tái khám:</span>
                     <span className="flex-1 min-w-0 border-b-2 border-dotted border-slate-300 px-2 text-slate-900 font-bold break-all">
@@ -1574,9 +1698,75 @@ export default function DiagnosisPage() {
                   </div>
                 </div>
 
-                {/* Ngày khám & Bác sĩ ký tên ở góc phải dưới cùng */}
-                <div className="prescription-footer flex justify-end mt-2 mb-1">
-                  <div className="text-center min-w-[200px]">
+                {/* Footer đơn thuốc: Ghi chú ở bên trái (ô riêng, không viền) và Bác sĩ ký tên ở bên phải */}
+                <div className="prescription-footer flex justify-between items-start gap-4 mt-2 mb-1">
+                  {/* Ô Ghi chú riêng bên trái - không viền */}
+                  <div className="prescription-notes-col flex-1 min-w-0 text-left">
+                    <div className="font-bold text-slate-900 mb-1.5 text-xs sm:text-[13px]">Ghi chú:</div>
+                    {(() => {
+                      const rawNotes = viewingPrescription.notes ? viewingPrescription.notes.trim() : "";
+                      const noteLines = rawNotes
+                        ? rawNotes.split("\n").map((l: string) => l.trim()).filter(Boolean)
+                        : [];
+
+                      if (noteLines.length > 0) {
+                        const hasExplicitBullets = noteLines.some((l: string) => /^[-•*]/.test(l));
+                        return (
+                          <div className="space-y-0.5 text-slate-800 font-medium">
+                            {noteLines.map((line: string, idx: number) => {
+                              const isBullet = /^[-•*]\s*/.test(line);
+                              if (hasExplicitBullets) {
+                                if (isBullet) {
+                                  return (
+                                    <div key={idx} className="flex items-baseline gap-1.5 pl-1.5 leading-snug">
+                                      <span className="font-bold text-slate-700 shrink-0">-</span>
+                                      <span className="break-all" style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}>
+                                        {line.replace(/^[-•*]\s*/, "")}
+                                      </span>
+                                    </div>
+                                  );
+                                }
+                                return (
+                                  <div key={idx} className="leading-snug break-all text-slate-800" style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}>
+                                    {line}
+                                  </div>
+                                );
+                              }
+
+                              return (
+                                <div key={idx} className="flex items-baseline gap-1.5 leading-snug">
+                                  <span className="font-bold text-slate-700 shrink-0">-</span>
+                                  <span className="break-all" style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}>
+                                    {line}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="space-y-2 sm:space-y-2.5 text-slate-700 font-medium">
+                          <div className="flex items-baseline gap-1.5">
+                            <span className="font-bold text-slate-700 shrink-0">-</span>
+                          </div>
+                          <div className="flex items-baseline gap-1.5">
+                            <span className="font-bold text-slate-700 shrink-0">-</span>
+                          </div>
+                          <div className="flex items-baseline gap-1.5">
+                            <span className="font-bold text-slate-700 shrink-0">-</span>
+                          </div>
+                          <div className="flex items-baseline gap-1.5">
+                            <span className="font-bold text-slate-700 shrink-0">-</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Bác sĩ khám bệnh & Ký tên bên phải */}
+                  <div className="text-center min-w-[200px] shrink-0">
                     <p className="text-xs italic text-slate-600 mb-0.5">
                       {(() => {
                         const formatted = formatDateDisplay(viewingPrescription.date);

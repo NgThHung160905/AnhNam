@@ -567,11 +567,11 @@ export default function PatientMedicalSummaryModal({
                       <th className="px-3.5 py-3 border-r border-slate-200/80 w-[115px] text-center">
                         Ngày khám bệnh
                       </th>
-                      <th className="px-3.5 py-3 border-r border-slate-200/80 w-[170px]">
-                        Chẩn đoán
-                      </th>
                       <th className="px-3.5 py-3 border-r border-slate-200/80 min-w-[190px]">
                         Bệnh sử – Khám
+                      </th>
+                      <th className="px-3.5 py-3 border-r border-slate-200/80 w-[170px]">
+                        Chẩn đoán
                       </th>
                       <th className="px-3.5 py-3 border-r border-slate-200/80 min-w-[210px]">
                         Thuốc đã dùng
@@ -598,14 +598,14 @@ export default function PatientMedicalSummaryModal({
                             </span>
                           </td>
 
-                          {/* Cột 2: Chẩn đoán */}
-                          <td className="px-3.5 py-3 border-r border-slate-200/60 font-semibold text-slate-900 align-top break-words">
-                            {visit.diagnosis || "—"}
-                          </td>
-
-                          {/* Cột 3: Bệnh sử – Khám */}
+                          {/* Cột 2: Bệnh sử – Khám */}
                           <td className="px-3.5 py-3 border-r border-slate-200/60 text-slate-800 align-top break-words whitespace-pre-line leading-relaxed">
                             {visit.medicalHistory || "—"}
+                          </td>
+
+                          {/* Cột 3: Chẩn đoán */}
+                          <td className="px-3.5 py-3 border-r border-slate-200/60 font-semibold text-slate-900 align-top break-words">
+                            {visit.diagnosis || "—"}
                           </td>
 
                           {/* Cột 4: Thuốc đã dùng */}
@@ -723,6 +723,17 @@ export default function PatientMedicalSummaryModal({
               </div>
 
               <div>
+                <label className={`block font-semibold ${theme.subHeaderText} mb-1`}>Bệnh sử – Khám</label>
+                <textarea
+                  rows={2}
+                  value={editForm.medicalHistory}
+                  onChange={(e) => setEditForm({ ...editForm, medicalHistory: e.target.value })}
+                  className={`w-full px-2.5 py-1.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 ${theme.inputFocus} text-slate-900 bg-white resize-none`}
+                  placeholder="Ví dụ: Sốt 3 ngày, ho"
+                />
+              </div>
+
+              <div>
                 <label className={`block font-semibold ${theme.subHeaderText} mb-1`}>
                   Chẩn đoán <span className="text-red-500">*</span>
                 </label>
@@ -732,17 +743,6 @@ export default function PatientMedicalSummaryModal({
                   onChange={(e) => setEditForm({ ...editForm, diagnosis: e.target.value })}
                   className={`w-full px-2.5 py-1.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 ${theme.inputFocus} text-slate-900 bg-white`}
                   placeholder="Ví dụ: Viêm họng"
-                />
-              </div>
-
-              <div>
-                <label className={`block font-semibold ${theme.subHeaderText} mb-1`}>Bệnh sử – Khám</label>
-                <textarea
-                  rows={2}
-                  value={editForm.medicalHistory}
-                  onChange={(e) => setEditForm({ ...editForm, medicalHistory: e.target.value })}
-                  className={`w-full px-2.5 py-1.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 ${theme.inputFocus} text-slate-900 bg-white resize-none`}
-                  placeholder="Ví dụ: Sốt 3 ngày, ho"
                 />
               </div>
 

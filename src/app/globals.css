@@ -251,7 +251,7 @@ input[type="number"] {
 
   .prescription-sheet .patient-section,
   .prescription-sheet.spacious-mode .patient-section {
-    margin-bottom: 12px !important;
+    margin-bottom: 20px !important;
   }
   .prescription-sheet .patient-info-box,
   .prescription-sheet.spacious-mode .patient-info-box {
@@ -308,14 +308,25 @@ input[type="number"] {
   }
 
   .prescription-sheet .notes-box,
-  .prescription-sheet.spacious-mode .notes-box {
-    margin-bottom: 8px !important;
+  .prescription-sheet.spacious-mode .notes-box,
+  .prescription-sheet .followup-box,
+  .prescription-sheet.spacious-mode .followup-box {
+    margin-bottom: 6px !important;
     font-size: 12.5px !important;
   }
   .prescription-sheet .notes-box > :not([hidden]) ~ :not([hidden]),
   .prescription-sheet.spacious-mode .notes-box > :not([hidden]) ~ :not([hidden]) {
     margin-top: 3px !important;
     margin-bottom: 0 !important;
+  }
+  .prescription-sheet .prescription-notes-col,
+  .prescription-sheet.spacious-mode .prescription-notes-col {
+    border: none !important;
+    font-size: 12.5px !important;
+  }
+  .prescription-sheet .prescription-notes-col *,
+  .prescription-sheet.spacious-mode .prescription-notes-col * {
+    font-size: 12.5px !important;
   }
 
   .prescription-sheet .prescription-footer,
@@ -356,7 +367,7 @@ input[type="number"] {
     font-size: 12px !important;
   }
   .prescription-sheet.standard-mode .patient-section {
-    margin-bottom: 10px !important;
+    margin-bottom: 15px !important;
   }
   .prescription-sheet.standard-mode .patient-info-box > :not([hidden]) ~ :not([hidden]) {
     margin-top: 2.5px !important;
@@ -374,9 +385,15 @@ input[type="number"] {
     font-size: 12px !important;
     line-height: 1.25 !important;
   }
-  .prescription-sheet.standard-mode .notes-box {
-    margin-bottom: 6px !important;
+  .prescription-sheet.standard-mode .notes-box,
+  .prescription-sheet.standard-mode .followup-box {
+    margin-bottom: 5px !important;
     font-size: 12px !important;
+  }
+  .prescription-sheet.standard-mode .prescription-notes-col,
+  .prescription-sheet.standard-mode .prescription-notes-col * {
+    border: none !important;
+    font-size: 11.5px !important;
   }
   .prescription-sheet.standard-mode .prescription-footer {
     margin-top: 6px !important;
@@ -430,9 +447,15 @@ input[type="number"] {
   .prescription-sheet.dense-mode .prescription-item {
     font-size: 11px !important;
   }
-  .prescription-sheet.dense-mode .notes-box {
-    margin-bottom: 4px !important;
+  .prescription-sheet.dense-mode .notes-box,
+  .prescription-sheet.dense-mode .followup-box {
+    margin-bottom: 3px !important;
     font-size: 11px !important;
+  }
+  .prescription-sheet.dense-mode .prescription-notes-col,
+  .prescription-sheet.dense-mode .prescription-notes-col * {
+    border: none !important;
+    font-size: 10.5px !important;
   }
   .prescription-sheet.dense-mode .prescription-footer {
     margin-top: 4px !important;
@@ -483,16 +506,21 @@ input[type="number"] {
   .prescription-sheet.ultra-dense-mode .prescription-item {
     font-size: 10px !important;
   }
-  .prescription-sheet.ultra-dense-mode .notes-box {
-    margin-bottom: 3px !important;
+  .prescription-sheet.ultra-dense-mode .notes-box,
+  .prescription-sheet.ultra-dense-mode .followup-box {
+    margin-bottom: 2px !important;
     font-size: 10px !important;
   }
+  .prescription-sheet.ultra-dense-mode .prescription-notes-col,
+  .prescription-sheet.ultra-dense-mode .prescription-notes-col * {
+    border: none !important;
+    font-size: 9.5px !important;
+  }
   .prescription-sheet.ultra-dense-mode .prescription-footer {
-    margin-top: 3px !important;
+    margin-top: 2px !important;
   }
   .prescription-sheet.ultra-dense-mode .prescription-footer .signature-gap {
     height: 30px !important;
   }
 }
-
 
