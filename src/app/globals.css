@@ -86,12 +86,12 @@ input[type="number"] {
 }
 
 /* ==========================================================================
-   PRINT STYLES: Đảm bảo in đơn thuốc và báo cáo hiển thị đầy đủ, đẹp và chuẩn A5
+   PRINT STYLES: Đảm bảo in đơn thuốc và báo cáo hiển thị đầy đủ, đẹp và chuẩn A5 trên 1 trang duy nhất
    ========================================================================== */
 @media print {
   @page {
     size: A5 portrait;
-    /* margin: 0 loại bỏ hoàn toàn tiêu đề 'Quản lý Phòng Khám' và ngày giờ/URL mặc định của trình duyệt */
+    /* margin: 0 loại bỏ hoàn toàn tiêu đề và ngày giờ/URL mặc định của trình duyệt */
     margin: 0;
   }
 
@@ -102,9 +102,9 @@ input[type="number"] {
     color: #000000 !important;
     margin: 0 !important;
     padding: 0 !important;
-    height: auto !important;
-    min-height: auto !important;
-    overflow: visible !important;
+    height: 100% !important;
+    max-height: 210mm !important;
+    overflow: hidden !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
@@ -137,19 +137,17 @@ input[type="number"] {
     width: 100% !important;
   }
 
-  /* Canh giữa tuyệt đối cho Bill Đơn Thuốc trên trang A5 */
+  /* Khung backdrop và container in gói gọn trong 1 trang A5 duy nhất */
   .prescription-modal-backdrop {
     position: static !important;
-    display: flex !important;
-    justify-content: center !important;
-    align-items: flex-start !important;
+    display: block !important;
     background: transparent !important;
     padding: 0 !important;
     margin: 0 auto !important;
     inset: auto !important;
-    overflow: visible !important;
-    height: auto !important;
-    max-height: none !important;
+    overflow: hidden !important;
+    height: 100% !important;
+    max-height: 210mm !important;
     width: 100% !important;
     z-index: auto !important;
   }
@@ -159,33 +157,171 @@ input[type="number"] {
     display: block !important;
     width: 100% !important;
     max-width: 148mm !important;
+    height: 100% !important;
+    max-height: 210mm !important;
     margin: 0 auto !important;
     padding: 0 !important;
     background: #ffffff !important;
     box-shadow: none !important;
     border-radius: 0 !important;
     border: none !important;
-    overflow: visible !important;
+    overflow: hidden !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
   }
 
+  /* Tờ đơn thuốc A5: Tối ưu lề và kích cỡ để luôn vừa vặn trong 1 trang duy nhất */
   .prescription-sheet {
     margin: 0 auto !important;
     max-width: 148mm !important;
     width: 100% !important;
-    padding: 8mm 10mm !important;
+    max-height: 210mm !important;
+    padding: 5mm 8mm 4mm 8mm !important;
     background: #ffffff !important;
     border-radius: 0 !important;
     box-shadow: none !important;
     box-sizing: border-box !important;
-    font-size: 13px !important;
-    line-height: 1.35 !important;
-  }
-
-  /* Tránh ngắt trang giữa chừng các dòng thuốc hoặc khu vực ký tên bác sĩ */
-  .prescription-item,
-  .prescription-footer {
+    font-size: 11.5px !important;
+    line-height: 1.3 !important;
+    overflow: hidden !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
+    break-after: avoid !important;
+    page-break-after: avoid !important;
+  }
+
+  /* Reset độ nhô lên của span gạch chấm khi in để tiết kiệm chiều cao */
+  .prescription-sheet span[style*="top"] {
+    top: 0 !important;
+  }
+  .prescription-sheet .border-b-2 {
+    border-bottom-width: 1px !important;
+  }
+
+  /* Thu gọn khoảng cách các khối khi in */
+  .prescription-sheet .prescription-header {
+    margin-top: 0 !important;
+    margin-bottom: 3px !important;
+    padding: 0 !important;
+  }
+  .prescription-sheet .prescription-header h3 {
+    font-size: 11px !important;
+    margin-bottom: 1px !important;
+  }
+  .prescription-sheet .prescription-header h2 {
+    font-size: 17px !important;
+    margin-bottom: 0 !important;
+    line-height: 1.2 !important;
+  }
+
+  .prescription-sheet .patient-info-box {
+    margin-bottom: 4px !important;
+    font-size: 11px !important;
+  }
+  .prescription-sheet .patient-info-box > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 2px !important;
+    margin-bottom: 0 !important;
+  }
+
+  .prescription-sheet .diagnosis-box {
+    margin-bottom: 3px !important;
+    font-size: 11px !important;
+  }
+
+  .prescription-sheet .medicines-box {
+    margin-bottom: 4px !important;
+  }
+  .prescription-sheet .medicines-box h3 {
+    font-size: 11px !important;
+    margin-bottom: 2px !important;
+  }
+
+  .prescription-sheet .medicines-list > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 3px !important;
+    margin-bottom: 0 !important;
+  }
+
+  .prescription-item {
+    font-size: 11px !important;
+    line-height: 1.25 !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+  .prescription-item .med-title {
+    margin-bottom: 1px !important;
+  }
+  .prescription-item .med-body {
+    padding-left: 8px !important;
+  }
+  .prescription-item .med-body > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 1px !important;
+    margin-bottom: 0 !important;
+  }
+
+  .prescription-sheet .notes-box {
+    margin-bottom: 3px !important;
+    font-size: 11px !important;
+  }
+  .prescription-sheet .notes-box > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 2px !important;
+    margin-bottom: 0 !important;
+  }
+
+  .prescription-footer {
+    margin-top: 2px !important;
+    margin-bottom: 0 !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+  .prescription-footer .signature-gap {
+    height: 28px !important;
+  }
+
+  /* Khi có từ 5 thuốc trở lên: tự động kích hoạt chế độ thu gọn hơn */
+  .prescription-sheet.dense-mode {
+    padding: 3mm 7mm 2mm 7mm !important;
+    font-size: 10.5px !important;
+    line-height: 1.2 !important;
+  }
+  .prescription-sheet.dense-mode .prescription-header h2 {
+    font-size: 16px !important;
+  }
+  .prescription-sheet.dense-mode .patient-info-box {
+    margin-bottom: 3px !important;
+  }
+  .prescription-sheet.dense-mode .patient-info-box > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 1.5px !important;
+  }
+  .prescription-sheet.dense-mode .medicines-list > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 2px !important;
+  }
+  .prescription-sheet.dense-mode .prescription-item {
+    font-size: 10.5px !important;
+  }
+  .prescription-sheet.dense-mode .prescription-footer .signature-gap {
+    height: 22px !important;
+  }
+
+  /* Khi có từ 7 thuốc trở lên: siêu thu gọn */
+  .prescription-sheet.ultra-dense-mode {
+    padding: 2mm 6mm 2mm 6mm !important;
+    font-size: 9.5px !important;
+    line-height: 1.15 !important;
+  }
+  .prescription-sheet.ultra-dense-mode .prescription-header h2 {
+    font-size: 15px !important;
+  }
+  .prescription-sheet.ultra-dense-mode .patient-info-box > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 1px !important;
+  }
+  .prescription-sheet.ultra-dense-mode .medicines-list > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 1.5px !important;
+  }
+  .prescription-sheet.ultra-dense-mode .prescription-item {
+    font-size: 9.5px !important;
+  }
+  .prescription-sheet.ultra-dense-mode .prescription-footer .signature-gap {
+    height: 16px !important;
   }
 }
 

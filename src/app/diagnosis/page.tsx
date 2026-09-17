@@ -1363,228 +1363,233 @@ export default function DiagnosisPage() {
       )}
       </div>
 
-      {viewingPrescription && (
-        <div className="prescription-modal-backdrop fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50 p-4" onClick={() => setViewingPrescription(null)}>
-          <div ref={prescriptionModalRef} className="prescription-modal-container bg-white rounded-xl shadow-xl max-w-xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="prescription-sheet p-6 sm:p-8 bg-white text-slate-800 relative rounded-xl">
-              {/* Nút đóng */}
-              <button
-                type="button"
-                onClick={() => setViewingPrescription(null)}
-                className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors print:hidden cursor-pointer"
-                title="Đóng"
-              >
-                <X className="w-5 h-5" />
-              </button>
+      {viewingPrescription && (() => {
+        const medList = getPrescriptionDetails(viewingPrescription);
+        const medCount = medList.length;
+        const denseClass = medCount >= 7 ? "dense-mode ultra-dense-mode" : medCount >= 5 ? "dense-mode" : "";
 
-              {/* Header Đơn Thuốc */}
-              <div className="text-center mb-4 mt-1 px-4">
-                <h3 className="text-sm sm:text-base font-bold uppercase tracking-wide text-slate-700 mb-1">
-                  PHÒNG KHÁM NHI BS NAM – BS PHỤNG
-                </h3>
-                <h2 className="text-2xl font-bold uppercase tracking-wider text-slate-900">
-                  ĐƠN THUỐC
-                </h2>
-              </div>
-
-              {/* Thông tin bệnh nhân */}
-              {(() => {
-                const pt = savedPatients.find((p: any) => viewingPrescription.patientId ? p.id === viewingPrescription.patientId : p.name === viewingPrescription.patientName) || {};
-                const ptCode = getPatientCode(viewingPrescription);
-                const displayPtCode = ptCode !== "-" ? ptCode : (viewingPrescription.patientId || (pt as any).id || "");
-                return (
-                  <div className="space-y-2.5 mb-4 text-sm">
-                    <div className="flex gap-4 items-end">
-                      <div className="flex gap-2 items-end flex-1">
-                        <span className="font-semibold whitespace-nowrap">Họ tên:</span>
-                        <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2 font-medium">
-                          <span style={{ position: "relative", top: "3px" }}>{viewingPrescription.patientName}</span>
-                        </span>
-                      </div>
-                      <div className="flex gap-2 items-end w-36 shrink-0">
-                        <span className="font-semibold whitespace-nowrap">Mã BN:</span>
-                        <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2 font-mono font-bold text-blue-700">
-                          <span style={{ position: "relative", top: "3px" }}>{displayPtCode}</span>
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex gap-4 items-end">
-                      <div className="flex gap-2 items-end flex-1 whitespace-nowrap">
-                        <span className="font-semibold whitespace-nowrap">Ngày sinh:</span>
-                        <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2 whitespace-nowrap">
-                          <span style={{ position: "relative", top: "3px" }}>
-                            {(pt as any).dob ? `${formatDisplayDate((pt as any).dob)} (${calculateAge((pt as any).dob)})` : ""}
-                          </span>
-                        </span>
-                      </div>
-                      <div className="flex gap-2 items-end w-36 shrink-0">
-                        <span className="font-semibold whitespace-nowrap">Giới tính:</span>
-                        <span className="flex-1 border-b-2 border-dotted border-slate-300 flex items-center justify-around pb-1 text-xs whitespace-nowrap">
-                          <label className="flex items-center gap-1"><input type="checkbox" className="w-3 h-3" readOnly checked={(pt as any).gender === "Nam"} /> Nam</label>
-                          <label className="flex items-center gap-1"><input type="checkbox" className="w-3 h-3" readOnly checked={(pt as any).gender === "Nữ"} /> Nữ</label>
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex gap-3 items-end flex-wrap text-xs sm:text-sm">
-                      <div className="flex gap-1.5 items-end">
-                        <span className="font-semibold whitespace-nowrap">Cân nặng:</span>
-                        <span className="border-b-2 border-dotted border-slate-300 px-1.5 min-w-[40px]">
-                          <span style={{ position: "relative", top: "3px" }}>
-                            {viewingPrescription.weight || (pt as any).weight ? `${viewingPrescription.weight || (pt as any).weight} kg` : ""}
-                          </span>
-                        </span>
-                      </div>
-                      <div className="flex gap-1.5 items-end">
-                        <span className="font-semibold whitespace-nowrap">Chiều cao:</span>
-                        <span className="border-b-2 border-dotted border-slate-300 px-1.5 min-w-[40px]">
-                          <span style={{ position: "relative", top: "3px" }}>
-                            {(pt as any).height ? `${(pt as any).height} cm` : ""}
-                          </span>
-                        </span>
-                      </div>
-                      <div className="flex gap-1.5 items-end">
-                        <span className="font-semibold whitespace-nowrap">BMI:</span>
-                        <span className="border-b-2 border-dotted border-slate-300 px-1.5 min-w-[35px]">
-                          <span style={{ position: "relative", top: "3px" }}>
-                            {(() => {
-                              const curW = viewingPrescription.weight || (pt as any).weight;
-                              const curH = (pt as any).height;
-                              return curW && curH ? calculateBMI(curW, curH) : "";
-                            })()}
-                          </span>
-                        </span>
-                      </div>
-                      <div className="flex gap-1.5 items-end">
-                        <span className="font-semibold whitespace-nowrap">NĐ:</span>
-                        <span className="border-b-2 border-dotted border-slate-300 px-1.5 min-w-[35px]">
-                          <span style={{ position: "relative", top: "3px" }}>
-                            {(pt as any).temperature ? `${(pt as any).temperature} °C` : ""}
-                          </span>
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex gap-2 items-end">
-                      <span className="font-semibold whitespace-nowrap">Địa chỉ:</span>
-                      <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2">
-                        <span style={{ position: "relative", top: "3px" }}>{(pt as any).address || ""}</span>
-                      </span>
-                    </div>
-                  </div>
-                );
-              })()}
-
-              <div className="flex gap-2 items-end mb-2 text-sm">
-                <span className="font-semibold whitespace-nowrap">Chẩn đoán:</span>
-                <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2 font-medium">
-                  <span style={{ position: "relative", top: "3px" }}>{viewingPrescription.diagnosis}</span>
-                </span>
-              </div>
-
-              {viewingPrescription.medicalHistory && (
-                <div className="flex gap-2 items-end mb-3 text-sm">
-                  <span className="font-semibold whitespace-nowrap">Bệnh sử – Khám:</span>
-                  <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2">
-                    <span style={{ position: "relative", top: "3px" }}>{viewingPrescription.medicalHistory}</span>
-                  </span>
-                </div>
-              )}
-
-              {/* Danh sách thuốc */}
-              <div className="mb-4">
-                <h3 className="font-bold text-sm mb-2 uppercase tracking-wide text-slate-800">Thuốc điều trị:</h3>
-                <div className="space-y-3">
-                  {getPrescriptionDetails(viewingPrescription).map((item: any, idx: number) => (
-                    <div key={idx} className="prescription-item text-sm">
-                      <div className="font-bold mb-1">
-                        {idx + 1}/ {item.name}
-                      </div>
-                      <div className="pl-4 text-slate-700 space-y-1">
-                        {item.notes && <div className="text-slate-600 italic text-xs mb-0.5">- Ghi chú: {item.notes}</div>}
-                        <div className="flex flex-wrap gap-x-3 gap-y-1 items-baseline">
-                          <div className="flex items-baseline gap-1 shrink-0">
-                            <span>- Số lượng:</span>
-                            <span className="border-b-2 border-dotted border-slate-300 min-w-[44px] text-center font-bold px-1.5">
-                              <span style={{ position: "relative", top: "2px" }}>{item.quantity}</span>
-                            </span>
-                            <span>{item.unit}</span>
-                          </div>
-                          <div className="flex-1 min-w-[200px]">
-                            <span>Uống mỗi ngày {item.medTimes || "...."} lần, mỗi lần {item.medAmount || "...."} {item.medCustomUnit || item.unit || "viên"}, trong {item.medDays || "...."} ngày.</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Ghi chú & Tái khám */}
-              <div className="space-y-2 mb-3 text-sm">
-                <div className="flex gap-2 items-end">
-                  <span className="font-semibold whitespace-nowrap">Ghi chú:</span>
-                  <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2">
-                    <span style={{ position: "relative", top: "3px" }}>{viewingPrescription.notes}</span>
-                  </span>
-                </div>
-                <div className="flex gap-2 items-end">
-                  <span className="font-semibold whitespace-nowrap text-red-600">Tái khám:</span>
-                  <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2 text-slate-800 font-medium">
-                    <span style={{ position: "relative", top: "3px" }}>{viewingPrescription.followUpDate}</span>
-                  </span>
-                </div>
-              </div>
-
-              {/* Ngày khám & Bác sĩ ký tên ở góc phải dưới cùng */}
-              <div className="prescription-footer flex justify-end mt-2 mb-3">
-                <div className="text-center min-w-[200px]">
-                  <p className="text-xs italic text-slate-600 mb-0.5">
-                    {(() => {
-                      const formatted = formatDateDisplay(viewingPrescription.date);
-                      const parts = formatted ? formatted.split(" ")[0].split("-") : null;
-                      if (parts && parts.length === 3) {
-                        return `Ngày ${parts[0]} tháng ${parts[1]} năm ${parts[2]}`;
-                      }
-                      return formatted ? `Ngày khám: ${formatted}` : "Ngày .... tháng .... năm 20...";
-                    })()}
-                  </p>
-                  <p className="font-bold uppercase text-slate-800 text-xs tracking-wide">
-                    Bác sĩ khám bệnh
-                  </p>
-                  <p className="text-[11px] italic text-slate-500">
-                    (Ký, ghi rõ họ tên)
-                  </p>
-                  <div className="h-14 flex items-end justify-center">
-                    {/* Khoảng trống để ký tên */}
-                  </div>
-                  <p className="font-bold text-slate-900 text-sm">
-                    {viewingPrescription.doctorName || ""}
-                  </p>
-                </div>
-              </div>
-
-              {/* Các nút hành động phía dưới (ẩn khi in) */}
-              <div className="flex justify-end gap-3 mt-4 pt-3 border-t border-slate-200 print:hidden">
-                <button
-                  type="button"
-                  onClick={handlePrintPrescription}
-                  className="px-6 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors shadow-sm flex items-center gap-2 cursor-pointer"
-                >
-                  <Printer className="w-4 h-4" />
-                  <span>In Đơn Thuốc</span>
-                </button>
+        return (
+          <div className="prescription-modal-backdrop fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50 p-4" onClick={() => setViewingPrescription(null)}>
+            <div ref={prescriptionModalRef} className="prescription-modal-container bg-white rounded-xl shadow-xl max-w-xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+              <div className={`prescription-sheet p-6 sm:p-8 bg-white text-slate-800 relative rounded-xl ${denseClass}`}>
+                {/* Nút đóng */}
                 <button
                   type="button"
                   onClick={() => setViewingPrescription(null)}
-                  className="px-6 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors border border-slate-300 cursor-pointer"
+                  className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors print:hidden cursor-pointer"
+                  title="Đóng"
                 >
-                  Đóng
+                  <X className="w-5 h-5" />
                 </button>
+
+                {/* Header Đơn Thuốc */}
+                <div className="prescription-header text-center mb-4 mt-1 px-4">
+                  <h3 className="text-sm sm:text-base font-bold uppercase tracking-wide text-slate-700 mb-1">
+                    PHÒNG KHÁM NHI BS NAM – BS PHỤNG
+                  </h3>
+                  <h2 className="text-2xl font-bold uppercase tracking-wider text-slate-900">
+                    ĐƠN THUỐC
+                  </h2>
+                </div>
+
+                {/* Thông tin bệnh nhân */}
+                {(() => {
+                  const pt = savedPatients.find((p: any) => viewingPrescription.patientId ? p.id === viewingPrescription.patientId : p.name === viewingPrescription.patientName) || {};
+                  const ptCode = getPatientCode(viewingPrescription);
+                  const displayPtCode = ptCode !== "-" ? ptCode : (viewingPrescription.patientId || (pt as any).id || "");
+                  return (
+                    <div className="patient-info-box space-y-2.5 mb-4 text-sm">
+                      <div className="flex gap-4 items-end">
+                        <div className="flex gap-2 items-end flex-1">
+                          <span className="font-semibold whitespace-nowrap">Họ tên:</span>
+                          <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2 font-medium">
+                            <span style={{ position: "relative", top: "3px" }}>{viewingPrescription.patientName}</span>
+                          </span>
+                        </div>
+                        <div className="flex gap-2 items-end w-36 shrink-0">
+                          <span className="font-semibold whitespace-nowrap">Mã BN:</span>
+                          <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2 font-mono font-bold text-blue-700">
+                            <span style={{ position: "relative", top: "3px" }}>{displayPtCode}</span>
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex gap-4 items-end">
+                        <div className="flex gap-2 items-end flex-1 whitespace-nowrap">
+                          <span className="font-semibold whitespace-nowrap">Ngày sinh:</span>
+                          <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2 whitespace-nowrap">
+                            <span style={{ position: "relative", top: "3px" }}>
+                              {(pt as any).dob ? `${formatDisplayDate((pt as any).dob)} (${calculateAge((pt as any).dob)})` : ""}
+                            </span>
+                          </span>
+                        </div>
+                        <div className="flex gap-2 items-end w-36 shrink-0">
+                          <span className="font-semibold whitespace-nowrap">Giới tính:</span>
+                          <span className="flex-1 border-b-2 border-dotted border-slate-300 flex items-center justify-around pb-1 text-xs whitespace-nowrap">
+                            <label className="flex items-center gap-1"><input type="checkbox" className="w-3 h-3" readOnly checked={(pt as any).gender === "Nam"} /> Nam</label>
+                            <label className="flex items-center gap-1"><input type="checkbox" className="w-3 h-3" readOnly checked={(pt as any).gender === "Nữ"} /> Nữ</label>
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex gap-3 items-end flex-wrap text-xs sm:text-sm">
+                        <div className="flex gap-1.5 items-end">
+                          <span className="font-semibold whitespace-nowrap">Cân nặng:</span>
+                          <span className="border-b-2 border-dotted border-slate-300 px-1.5 min-w-[40px]">
+                            <span style={{ position: "relative", top: "3px" }}>
+                              {viewingPrescription.weight || (pt as any).weight ? `${viewingPrescription.weight || (pt as any).weight} kg` : ""}
+                            </span>
+                          </span>
+                        </div>
+                        <div className="flex gap-1.5 items-end">
+                          <span className="font-semibold whitespace-nowrap">Chiều cao:</span>
+                          <span className="border-b-2 border-dotted border-slate-300 px-1.5 min-w-[40px]">
+                            <span style={{ position: "relative", top: "3px" }}>
+                              {(pt as any).height ? `${(pt as any).height} cm` : ""}
+                            </span>
+                          </span>
+                        </div>
+                        <div className="flex gap-1.5 items-end">
+                          <span className="font-semibold whitespace-nowrap">BMI:</span>
+                          <span className="border-b-2 border-dotted border-slate-300 px-1.5 min-w-[35px]">
+                            <span style={{ position: "relative", top: "3px" }}>
+                              {(() => {
+                                const curW = viewingPrescription.weight || (pt as any).weight;
+                                const curH = (pt as any).height;
+                                return curW && curH ? calculateBMI(curW, curH) : "";
+                              })()}
+                            </span>
+                          </span>
+                        </div>
+                        <div className="flex gap-1.5 items-end">
+                          <span className="font-semibold whitespace-nowrap">NĐ:</span>
+                          <span className="border-b-2 border-dotted border-slate-300 px-1.5 min-w-[35px]">
+                            <span style={{ position: "relative", top: "3px" }}>
+                              {(pt as any).temperature ? `${(pt as any).temperature} °C` : ""}
+                            </span>
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 items-end">
+                        <span className="font-semibold whitespace-nowrap">Địa chỉ:</span>
+                        <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2">
+                          <span style={{ position: "relative", top: "3px" }}>{(pt as any).address || ""}</span>
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                <div className="diagnosis-box flex gap-2 items-end mb-2 text-sm">
+                  <span className="font-semibold whitespace-nowrap">Chẩn đoán:</span>
+                  <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2 font-medium">
+                    <span style={{ position: "relative", top: "3px" }}>{viewingPrescription.diagnosis}</span>
+                  </span>
+                </div>
+
+                {viewingPrescription.medicalHistory && (
+                  <div className="diagnosis-box flex gap-2 items-end mb-3 text-sm">
+                    <span className="font-semibold whitespace-nowrap">Bệnh sử – Khám:</span>
+                    <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2">
+                      <span style={{ position: "relative", top: "3px" }}>{viewingPrescription.medicalHistory}</span>
+                    </span>
+                  </div>
+                )}
+
+                {/* Danh sách thuốc */}
+                <div className="medicines-box mb-4">
+                  <h3 className="font-bold text-sm mb-2 uppercase tracking-wide text-slate-800">Thuốc điều trị:</h3>
+                  <div className="medicines-list space-y-3">
+                    {medList.map((item: any, idx: number) => (
+                      <div key={idx} className="prescription-item text-sm">
+                        <div className="med-title font-bold mb-1">
+                          {idx + 1}/ {item.name}
+                        </div>
+                        <div className="med-body pl-4 text-slate-700 space-y-1">
+                          {item.notes && <div className="text-slate-600 italic text-xs mb-0.5">- Ghi chú: {item.notes}</div>}
+                          <div className="flex flex-wrap gap-x-3 gap-y-1 items-baseline">
+                            <div className="flex items-baseline gap-1 shrink-0">
+                              <span>- Số lượng:</span>
+                              <span className="border-b-2 border-dotted border-slate-300 min-w-[44px] text-center font-bold px-1.5">
+                                <span style={{ position: "relative", top: "2px" }}>{item.quantity}</span>
+                              </span>
+                              <span>{item.unit}</span>
+                            </div>
+                            <div className="flex-1 min-w-[200px]">
+                              <span>Uống mỗi ngày {item.medTimes || "...."} lần, mỗi lần {item.medAmount || "...."} {item.medCustomUnit || item.unit || "viên"}, trong {item.medDays || "...."} ngày.</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Ghi chú & Tái khám */}
+                <div className="notes-box space-y-2 mb-3 text-sm">
+                  <div className="flex gap-2 items-end">
+                    <span className="font-semibold whitespace-nowrap">Ghi chú:</span>
+                    <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2">
+                      <span style={{ position: "relative", top: "3px" }}>{viewingPrescription.notes}</span>
+                    </span>
+                  </div>
+                  <div className="flex gap-2 items-end">
+                    <span className="font-semibold whitespace-nowrap text-red-600">Tái khám:</span>
+                    <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2 text-slate-800 font-medium">
+                      <span style={{ position: "relative", top: "3px" }}>{viewingPrescription.followUpDate}</span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Ngày khám & Bác sĩ ký tên ở góc phải dưới cùng */}
+                <div className="prescription-footer flex justify-end mt-2 mb-3">
+                  <div className="text-center min-w-[200px]">
+                    <p className="text-xs italic text-slate-600 mb-0.5">
+                      {(() => {
+                        const formatted = formatDateDisplay(viewingPrescription.date);
+                        const parts = formatted ? formatted.split(" ")[0].split("-") : null;
+                        if (parts && parts.length === 3) {
+                          return `Ngày ${parts[0]} tháng ${parts[1]} năm ${parts[2]}`;
+                        }
+                        return formatted ? `Ngày khám: ${formatted}` : "Ngày .... tháng .... năm 20...";
+                      })()}
+                    </p>
+                    <p className="font-bold uppercase text-slate-800 text-xs tracking-wide">
+                      Bác sĩ khám bệnh
+                    </p>
+                    <p className="text-[11px] italic text-slate-500">
+                      (Ký, ghi rõ họ tên)
+                    </p>
+                    <div className="signature-gap h-14 flex items-end justify-center">
+                      {/* Khoảng trống để ký tên */}
+                    </div>
+                    <p className="font-bold text-slate-900 text-sm">
+                      {viewingPrescription.doctorName || ""}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Các nút hành động phía dưới (ẩn khi in) */}
+                <div className="flex justify-end gap-3 mt-4 pt-3 border-t border-slate-200 print:hidden">
+                  <button
+                    type="button"
+                    onClick={handlePrintPrescription}
+                    className="px-6 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors shadow-sm flex items-center gap-2 cursor-pointer"
+                  >
+                    <Printer className="w-4 h-4" />
+                    <span>In Đơn Thuốc</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewingPrescription(null)}
+                    className="px-6 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors border border-slate-300 cursor-pointer"
+                  >
+                    Đóng
+                  </button>
+                </div>
               </div>
             </div>
-
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Modal Xác nhận Xóa */}
       {deletingDiag && (
