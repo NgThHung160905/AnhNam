@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Search, Pill, Edit2, Trash2 } from "lucide-react";
+import { recordMedicinePriceChange } from "@/lib/medicinePriceService";
 
 const formatVND = (amount: number) => {
   return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(amount);
@@ -79,18 +80,28 @@ export default function MedicinesPage() {
     const parsedStock = newMed.stock !== "" ? Number(newMed.stock) : 0;
 
     if (editingMedId) {
-      setMedicines(
-        medicines.map((m) =>
-          m.id === editingMedId
-            ? { ...newMed, id: trimmedId, price: parsedPrice, stock: parsedStock }
-            : m
-        )
+      const existing = medicines.find((m) => m.id === editingMedId);
+      const oldPrice = existing ? (typeof existing.price === "number" ? existing.price : (parseInt(String(existing.price || "0").replace(/\D/g, ""), 10) || 0)) : 0;
+      if (existing && oldPrice !== parsedPrice) {
+        recordMedicinePriceChange(trimmedId, newMed.name, oldPrice, parsedPrice);
+      }
+
+      const updated = medicines.map((m) =>
+        m.id === editingMedId
+          ? { ...newMed, id: trimmedId, price: parsedPrice, stock: parsedStock }
+          : m
       );
+      setMedicines(updated);
+      localStorage.setItem("khambenh_medicines", JSON.stringify(updated));
+      window.dispatchEvent(new Event("khambenh_medicines_updated"));
     } else {
-      setMedicines([
+      const updated = [
         { ...newMed, id: trimmedId, price: parsedPrice, stock: parsedStock },
         ...medicines,
-      ]);
+      ];
+      setMedicines(updated);
+      localStorage.setItem("khambenh_medicines", JSON.stringify(updated));
+      window.dispatchEvent(new Event("khambenh_medicines_updated"));
     }
 
     setNewMed({ id: "", name: "", type: "", unit: "", price: "", stock: "" });

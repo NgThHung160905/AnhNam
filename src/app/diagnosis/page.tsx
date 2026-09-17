@@ -3,9 +3,10 @@
 import { useState, useEffect, useRef } from "react";
 import { Plus, Search, FileText, Edit2, Trash2, X, ClipboardList, Stethoscope, Pill, Printer } from "lucide-react";
 import { formatPatientCode, syncDiagnosisToMedicalSummary, removeDiagnosisFromMedicalSummary } from "@/lib/medicalSummaryService";
+import { freezePrescriptionMedicines, getHistoricalMedicinePrice, backfillDiagnosesMedicinePrices } from "@/lib/medicinePriceService";
 import DatePicker, { calculateAge, formatDisplayDate } from "@/components/DatePicker";
 
-const EMPTY_MED_LINE = { medicineName: "", medicineQuantity: 1, medDays: "", medTimes: "", medAmount: "", medicineNote: "", medCustomUnit: "viên" };
+const EMPTY_MED_LINE = { medicineName: "", medicineQuantity: 1, price: 0, medDays: "", medTimes: "", medAmount: "", medicineNote: "", medCustomUnit: "viên" };
 
 const Autocomplete = ({ id, value, onChange, onSelect, options, getOptionLabel, renderOption, filterOption, maxSuggestions = 5, placeholder, className, dropdownClassName = "w-full" }: any) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -266,7 +267,12 @@ export default function DiagnosisPage() {
 
         // Hiển thị MÃ THUỐC thay vì tên thuốc theo đúng yêu cầu
         const displayCode = medInfo?.id || rawId || rawName;
-        const priceNum = parseInt((medInfo?.price || "5000").toString().replace(/[^0-9]/g, "")) || 5000;
+        const savedPrice = typeof m.price === "number" && m.price > 0
+          ? m.price
+          : (parseInt(String(m.price || "").replace(/\D/g, ""), 10) || 0);
+        const priceNum = savedPrice > 0
+          ? savedPrice
+          : (getHistoricalMedicinePrice(m, diag?.date, medCatalog) || (typeof medInfo?.price === "number" ? medInfo.price : parseInt(String(medInfo?.price || "5000").replace(/\D/g, ""), 10) || 5000));
 
         return {
           id: idx + 1,
@@ -313,6 +319,18 @@ export default function DiagnosisPage() {
 
 
   useEffect(() => {
+    let currentMeds = availableMedicines;
+    const savedMeds = localStorage.getItem("khambenh_medicines");
+    if (savedMeds) {
+      try {
+        const parsedMeds = JSON.parse(savedMeds);
+        if (Array.isArray(parsedMeds) && parsedMeds.length > 0) {
+          currentMeds = parsedMeds;
+          setAvailableMedicines(parsedMeds);
+        }
+      } catch (e) { }
+    }
+
     const saved = localStorage.getItem("khambenh_diagnosis");
     const sampleNames = [
       "nguyen van a", "nguyễn văn a", "trần bảo ngọc", "tran thi b", "trần thị b",
@@ -323,17 +341,17 @@ export default function DiagnosisPage() {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
           const cleaned = parsed.filter(d => !sampleNames.includes((d.patientName || "").trim().toLowerCase()));
-          setDiagnoses(cleaned);
-          if (cleaned.length !== parsed.length) {
-            localStorage.setItem("khambenh_diagnosis", JSON.stringify(cleaned));
+          const { updatedDiagnoses, changed } = backfillDiagnosesMedicinePrices(cleaned, currentMeds);
+          setDiagnoses(updatedDiagnoses);
+          if (cleaned.length !== parsed.length || changed) {
+            localStorage.setItem("khambenh_diagnosis", JSON.stringify(updatedDiagnoses));
           }
         }
       } catch (e) { setDiagnoses([]); }
     } else {
       setDiagnoses([]);
     }
-    const savedMeds = localStorage.getItem("khambenh_medicines");
-    if (savedMeds) { try { setAvailableMedicines(JSON.parse(savedMeds)); } catch (e) { } }
+
     const savedDoctors = localStorage.getItem("khambenh_doctors");
     if (savedDoctors) { try { setAvailableDoctors(JSON.parse(savedDoctors)); } catch (e) { } }
     const savedPts = localStorage.getItem("khambenh_patients");
@@ -434,11 +452,8 @@ export default function DiagnosisPage() {
     }
     setError("");
 
-    // Chuẩn hóa số lượng thuốc (tối thiểu 1)
-    const sanitizedMeds = (newDiag.medicines || []).map((med: any) => ({
-      ...med,
-      medicineQuantity: Math.max(1, parseInt(String(med.medicineQuantity)) || 1)
-    }));
+    // Chuẩn hóa số lượng thuốc (tối thiểu 1) và đóng băng (snapshot) giá thuốc tại thời điểm kê đơn
+    const sanitizedMeds = freezePrescriptionMedicines(newDiag.medicines || [], availableMedicines, newDiag.date);
     newDiag.medicines = sanitizedMeds;
 
     // Validation for stock
@@ -699,6 +714,10 @@ export default function DiagnosisPage() {
           if (medInfo) {
             updated.medicineName = medInfo.name;
             if (medInfo.id) updated.medicineId = medInfo.id;
+            const priceNum = typeof medInfo.price === "number"
+              ? medInfo.price
+              : (parseInt(String(medInfo.price || "0").replace(/\D/g, ""), 10) || 0);
+            updated.price = priceNum;
             if (medInfo.unit) {
               if (!updated.medicineUnit) updated.medicineUnit = medInfo.unit;
               if (!updated.medCustomUnit || updated.medCustomUnit === "viên") {

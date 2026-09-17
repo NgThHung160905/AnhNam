@@ -22,6 +22,7 @@ import {
   Pill
 } from "lucide-react";
 import { formatPatientCode } from "@/lib/medicalSummaryService";
+import { getHistoricalMedicinePrice, backfillDiagnosesMedicinePrices } from "@/lib/medicinePriceService";
 import { calculateAge, formatDisplayDate } from "@/components/DatePicker";
 
 const formatDateDisplay = (dateStr: string) => {
@@ -244,7 +245,12 @@ export default function SummaryPage() {
 
         // Hiển thị MÃ THUỐC thay vì tên thuốc theo đúng yêu cầu
         const displayMedCode = medInfo?.id || rawId || rawName;
-        const priceNum = typeof medInfo?.price === "number" ? medInfo.price : (parseInt(String(medInfo?.price || "5000").replace(/[^0-9]/g, "")) || 5000);
+        const savedPrice = typeof m.price === "number" && m.price > 0
+          ? m.price
+          : (parseInt(String(m.price || "").replace(/\D/g, ""), 10) || 0);
+        const priceNum = savedPrice > 0
+          ? savedPrice
+          : (getHistoricalMedicinePrice(m, diag?.date, medCatalog) || (typeof medInfo?.price === "number" ? medInfo.price : (parseInt(String(medInfo?.price || "5000").replace(/[^0-9]/g, "")) || 5000)));
 
         return {
           id: idx + 1,
@@ -279,11 +285,15 @@ export default function SummaryPage() {
   const loadData = () => {
     try {
       // 1. Nạp danh mục thuốc
+      let loadedMeds = medicines;
       const medRaw = localStorage.getItem("khambenh_medicines");
       if (medRaw) {
         try {
           const parsedMeds = JSON.parse(medRaw);
-          if (Array.isArray(parsedMeds)) setMedicines(parsedMeds);
+          if (Array.isArray(parsedMeds)) {
+            loadedMeds = parsedMeds;
+            setMedicines(parsedMeds);
+          }
         } catch (e) { }
       }
 
@@ -299,7 +309,7 @@ export default function SummaryPage() {
       // Xóa cấu hình đơn giá chuẩn cũ nếu có
       localStorage.removeItem("khambenh_revenue_pricing");
 
-      // 2. Nạp danh sách phiếu khám và TỰ ĐỘNG XÓA DATA MẪU
+      // 2. Nạp danh sách phiếu khám và TỰ ĐỘNG XÓA DATA MẪU + CHỐT GIÁ LỊCH SỬ
       const diagRaw = localStorage.getItem("khambenh_diagnosis");
       let realDiagnoses: any[] = [];
       if (diagRaw) {
@@ -312,10 +322,13 @@ export default function SummaryPage() {
               return !SAMPLE_PATIENT_NAMES.includes(name);
             });
 
-            // Nếu phát hiện có dữ liệu mẫu thì cập nhật lại localStorage ngay lập tức
-            if (realDiagnoses.length !== parsedDiag.length) {
+            // Tự động chốt giá lịch sử cho các phiếu khám cũ nếu có thuốc chưa lưu giá
+            const { updatedDiagnoses, changed } = backfillDiagnosesMedicinePrices(realDiagnoses, loadedMeds);
+            realDiagnoses = updatedDiagnoses;
+
+            // Nếu phát hiện có dữ liệu mẫu hoặc cần chốt giá thì cập nhật lại localStorage ngay lập tức
+            if (realDiagnoses.length !== parsedDiag.length || changed) {
               localStorage.setItem("khambenh_diagnosis", JSON.stringify(realDiagnoses));
-              window.dispatchEvent(new Event("khambenh_diagnosis_updated"));
             }
           }
         } catch (e) { }
@@ -351,18 +364,13 @@ export default function SummaryPage() {
         : (parseInt(String(d.serviceFee || "").replace(/\D/g, ""), 10) || 0);
 
       // 2. Đơn giá thuốc (tính từ các loại thuốc đã kê trong phiếu khám)
+      // BẢO TOÀN GIÁ LỊCH SỬ: Ưu tiên tuyệt đối med.price đã chốt tại thời điểm kê đơn!
       let medicineFee = 0;
       if (Array.isArray(d.medicines) && d.medicines.length > 0) {
         d.medicines.forEach((med: any) => {
-          if (!med.medicineName) return;
-          // Tìm đơn giá trong danh mục thuốc
-          const matched = medicines.find(
-            (m: any) => m.name?.trim().toLowerCase() === med.medicineName?.trim().toLowerCase()
-          );
-          const priceNum = matched
-            ? (typeof matched.price === "number" ? matched.price : parseInt(String(matched.price || "").replace(/\D/g, ""), 10) || 0)
-            : (typeof med.price === "number" ? med.price : parseInt(String(med.price || "").replace(/\D/g, ""), 10) || 0);
-
+          if (!med.medicineName && !med.name && !med.medicineId && !med.id) return;
+          // getHistoricalMedicinePrice: Ưu tiên med.price đã chốt -> Lịch sử đổi giá theo ngày -> Danh mục
+          const priceNum = getHistoricalMedicinePrice(med, d.date, medicines);
           const quantity = parseInt(String(med.medicineQuantity || 1), 10) || 1;
           medicineFee += (priceNum > 0 ? priceNum * quantity : 0);
         });
@@ -1325,12 +1333,19 @@ export default function SummaryPage() {
                             Toa thuốc đã kê:
                           </span>
                           <div className="space-y-1 pl-4">
-                            {item.medicines.filter((m: any) => m.medicineName).map((med: any, mIdx: number) => (
-                              <div key={mIdx} className="text-slate-600 flex justify-between">
-                                <span>• {med.medicineName}</span>
-                                <span className="font-mono text-slate-500">Số lượng: {med.medicineQuantity || 1} {med.medicineUnit || "viên"}</span>
-                              </div>
-                            ))}
+                            {item.medicines.filter((m: any) => m.medicineName).map((med: any, mIdx: number) => {
+                              const medPrice = getHistoricalMedicinePrice(med, item.date, medicines);
+                              const qty = med.medicineQuantity || 1;
+                              return (
+                                <div key={mIdx} className="text-slate-600 flex justify-between items-center py-0.5">
+                                  <span>• {med.medicineName}</span>
+                                  <span className="font-mono text-slate-500 text-[11px]">
+                                    {medPrice > 0 && <span className="text-slate-400 mr-1.5 font-normal">({formatVND(medPrice)}/đv)</span>}
+                                    Số lượng: {qty} {med.medicineUnit || "viên"}
+                                  </span>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       )}
