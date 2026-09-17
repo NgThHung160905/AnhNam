@@ -176,7 +176,7 @@ input[type="number"] {
     max-width: 148mm !important;
     width: 100% !important;
     max-height: 210mm !important;
-    padding: 5mm 8mm 4mm 8mm !important;
+    padding: 4mm 7mm 3mm 7mm !important;
     background: #ffffff !important;
     border-radius: 0 !important;
     box-shadow: none !important;
@@ -273,13 +273,14 @@ input[type="number"] {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
+  /* Khoảng trống ký tên rộng rãi, thoải mái ký và đóng dấu mà không tràn trang */
   .prescription-footer .signature-gap {
-    height: 28px !important;
+    height: 48px !important;
   }
 
   /* Khi có từ 5 thuốc trở lên: tự động kích hoạt chế độ thu gọn hơn */
   .prescription-sheet.dense-mode {
-    padding: 3mm 7mm 2mm 7mm !important;
+    padding: 3mm 6mm 2mm 6mm !important;
     font-size: 10.5px !important;
     line-height: 1.2 !important;
   }
@@ -299,12 +300,12 @@ input[type="number"] {
     font-size: 10.5px !important;
   }
   .prescription-sheet.dense-mode .prescription-footer .signature-gap {
-    height: 22px !important;
+    height: 40px !important;
   }
 
   /* Khi có từ 7 thuốc trở lên: siêu thu gọn */
   .prescription-sheet.ultra-dense-mode {
-    padding: 2mm 6mm 2mm 6mm !important;
+    padding: 2mm 5mm 2mm 5mm !important;
     font-size: 9.5px !important;
     line-height: 1.15 !important;
   }
@@ -321,7 +322,7 @@ input[type="number"] {
     font-size: 9.5px !important;
   }
   .prescription-sheet.ultra-dense-mode .prescription-footer .signature-gap {
-    height: 16px !important;
+    height: 30px !important;
   }
 }
 
