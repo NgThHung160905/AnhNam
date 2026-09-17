@@ -1390,7 +1390,7 @@ export default function SummaryPage() {
         return (
           <div className="prescription-modal-backdrop fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[60] p-4" onClick={() => setViewingPrescription(null)}>
             <div ref={prescriptionModalRef} className="prescription-modal-container bg-white rounded-xl shadow-xl max-w-xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-              <div className={`prescription-sheet p-6 sm:p-8 bg-white text-slate-800 relative rounded-xl ${denseClass}`}>
+              <div className={`prescription-sheet p-6 sm:p-8 bg-white text-slate-800 relative rounded-xl flex flex-col justify-between min-h-[640px] ${denseClass}`}>
                 {/* Nút đóng */}
                 <button
                   type="button"
@@ -1561,7 +1561,7 @@ export default function SummaryPage() {
                 </div>
 
                 {/* Ngày khám & Bác sĩ ký tên ở góc phải dưới cùng */}
-                <div className="prescription-footer flex justify-end mt-2 mb-3">
+                <div className="prescription-footer flex justify-end mt-auto pt-4 mb-3">
                   <div className="text-center min-w-[200px]">
                     <p className="text-xs italic text-slate-600 mb-0.5">
                       {(() => {
@@ -1579,7 +1579,7 @@ export default function SummaryPage() {
                     <p className="text-[11px] italic text-slate-500">
                       (Ký, ghi rõ họ tên)
                     </p>
-                    <div className="signature-gap h-14 flex items-end justify-center">
+                    <div className="signature-gap h-16 min-h-[50px] flex items-end justify-center">
                       {/* Khoảng trống để ký tên */}
                     </div>
                     <p className="font-bold text-slate-900 text-sm">

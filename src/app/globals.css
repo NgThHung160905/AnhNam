@@ -175,8 +175,11 @@ input[type="number"] {
     margin: 0 auto !important;
     max-width: 148mm !important;
     width: 100% !important;
-    max-height: 210mm !important;
-    padding: 6mm 8mm 5mm 8mm !important;
+    min-height: 182mm !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    padding: 6mm 8mm 4mm 8mm !important;
     background: #ffffff !important;
     border-radius: 0 !important;
     box-shadow: none !important;
@@ -198,15 +201,24 @@ input[type="number"] {
     border-bottom-width: 1px !important;
   }
 
+  /* Chân trang đơn thuốc (ngày khám + Bác sĩ ký tên):
+     Luôn tự động đẩy xuống sát đáy trang (margin-top: auto) để KHÔNG BAO GIỜ bị chừa khoảng trắng mênh mông ở dưới,
+     đồng thời chừa khoảng trống ký tên rộng rãi để bác sĩ ký và đóng dấu thoải mái. */
+  .prescription-sheet .prescription-footer {
+    margin-top: auto !important;
+    margin-bottom: 0 !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
   /* --------------------------------------------------------------------------
      1. MẶC ĐỊNH / KHI KÊ 1 - 3 THUỐC (spacious-mode):
-     Chữ to rõ, các khối cách 1 dòng rộng rãi, khoảng trống ký tên 60px.
-     Lấp đầy 90% trang A5 cân đối, sang trọng, LOẠI BỎ HOÀN TOÀN KHOẢNG TRẮNG TRỐNG TRẢI DƯỚI ĐÁY.
-     Tuyệt đối không tràn trang (chiều cao ~170mm < 190mm khổ in có lề mặc định).
+     Chữ to rõ, các khối cách 1 dòng rộng rãi, ô ký tên 65px.
+     Lấp đầy trang A5 cân đối, sang trọng.
      -------------------------------------------------------------------------- */
   .prescription-sheet,
   .prescription-sheet.spacious-mode {
-    padding: 7mm 9mm 6mm 9mm !important;
+    padding: 7mm 9mm 5mm 9mm !important;
   }
 
   .prescription-sheet .prescription-header,
@@ -302,20 +314,18 @@ input[type="number"] {
 
   .prescription-sheet .prescription-footer,
   .prescription-sheet.spacious-mode .prescription-footer {
-    margin-top: 24px !important;
+    margin-top: auto !important;
     margin-bottom: 0 !important;
-    break-inside: avoid !important;
-    page-break-inside: avoid !important;
   }
-  /* Khoảng trống ký tên rộng rãi 60px thoải mái ký và đóng dấu */
+  /* Khoảng trống ký tên rộng rãi 65px */
   .prescription-sheet .prescription-footer .signature-gap,
   .prescription-sheet.spacious-mode .prescription-footer .signature-gap {
-    height: 60px !important;
+    height: 65px !important;
   }
 
   /* --------------------------------------------------------------------------
      2. KHI KÊ 4 THUỐC (standard-mode):
-     Khoảng cách cân đối vừa phải để không bị tràn trang
+     Khoảng cách cân đối, ô ký tên 58px, vừa vặn 1 trang
      -------------------------------------------------------------------------- */
   .prescription-sheet.standard-mode {
     padding: 5mm 8mm 4mm 8mm !important;
@@ -348,7 +358,7 @@ input[type="number"] {
     font-size: 13px !important;
   }
   .prescription-sheet.standard-mode .medicines-list > :not([hidden]) ~ :not([hidden]) {
-    margin-top: 5px !important;
+    margin-top: 6px !important;
   }
   .prescription-sheet.standard-mode .prescription-item {
     font-size: 12.5px !important;
@@ -359,113 +369,115 @@ input[type="number"] {
     font-size: 12.5px !important;
   }
   .prescription-sheet.standard-mode .prescription-footer {
-    margin-top: 14px !important;
+    margin-top: auto !important;
   }
   .prescription-sheet.standard-mode .prescription-footer .signature-gap {
-    height: 46px !important;
+    height: 58px !important;
   }
 
   /* --------------------------------------------------------------------------
      3. KHI KÊ 5 - 6 THUỐC (dense-mode):
-     Tự động thu gọn hơn để đảm bảo trọn vẹn trong 1 trang
+     Thu gọn vừa phải, ô ký tên 52px rộng rãi, không bị chiếm chỗ
      -------------------------------------------------------------------------- */
   .prescription-sheet.dense-mode {
-    padding: 3mm 7mm 2mm 7mm !important;
-    font-size: 11px !important;
+    padding: 3mm 7mm 3mm 7mm !important;
+    font-size: 11.5px !important;
     line-height: 1.25 !important;
   }
   .prescription-sheet.dense-mode .prescription-header {
-    margin-bottom: 7px !important;
+    margin-bottom: 8px !important;
   }
   .prescription-sheet.dense-mode .prescription-header h2 {
-    font-size: 18px !important;
+    font-size: 19px !important;
   }
   .prescription-sheet.dense-mode .patient-section {
-    margin-bottom: 7px !important;
+    margin-bottom: 8px !important;
   }
   .prescription-sheet.dense-mode .patient-info-box {
     margin-bottom: 2px !important;
-    font-size: 11px !important;
+    font-size: 11.5px !important;
   }
   .prescription-sheet.dense-mode .patient-info-box > :not([hidden]) ~ :not([hidden]) {
     margin-top: 2px !important;
   }
   .prescription-sheet.dense-mode .diagnosis-box {
-    font-size: 11px !important;
+    font-size: 11.5px !important;
   }
   .prescription-sheet.dense-mode .medicines-box {
-    margin-bottom: 7px !important;
+    margin-bottom: 8px !important;
   }
   .prescription-sheet.dense-mode .medicines-box h3 {
-    font-size: 11.5px !important;
+    font-size: 12px !important;
     margin-bottom: 3px !important;
   }
   .prescription-sheet.dense-mode .medicines-list > :not([hidden]) ~ :not([hidden]) {
-    margin-top: 3px !important;
+    margin-top: 4px !important;
   }
   .prescription-sheet.dense-mode .prescription-item {
-    font-size: 11px !important;
+    font-size: 11.5px !important;
   }
   .prescription-sheet.dense-mode .notes-box {
-    margin-bottom: 5px !important;
-    font-size: 11px !important;
+    margin-bottom: 6px !important;
+    font-size: 11.5px !important;
   }
   .prescription-sheet.dense-mode .prescription-footer {
-    margin-top: 6px !important;
+    margin-top: auto !important;
   }
   .prescription-sheet.dense-mode .prescription-footer .signature-gap {
-    height: 34px !important;
+    height: 52px !important;
   }
 
   /* --------------------------------------------------------------------------
      4. KHI KÊ TỪ 7 THUỐC TRỞ LÊN (ultra-dense-mode):
-     Siêu thu gọn để 7-10 thuốc vẫn nằm trong 1 trang duy nhất
+     Ô ký tên vẫn đạt 48px RỘNG RÃI (không bị chiếm chỗ), chân trang đẩy sát đáy (không còn khoảng trắng thừa),
+     đảm bảo 7-10 thuốc vẫn nằm trọn vẹn trong 1 trang duy nhất!
      -------------------------------------------------------------------------- */
   .prescription-sheet.ultra-dense-mode {
-    padding: 2mm 5mm 2mm 5mm !important;
-    font-size: 9.5px !important;
-    line-height: 1.15 !important;
+    padding: 3mm 6mm 2mm 6mm !important;
+    font-size: 10.5px !important;
+    line-height: 1.2 !important;
   }
   .prescription-sheet.ultra-dense-mode .prescription-header {
-    margin-bottom: 4px !important;
+    margin-bottom: 5px !important;
   }
   .prescription-sheet.ultra-dense-mode .prescription-header h2 {
-    font-size: 15px !important;
+    font-size: 17px !important;
   }
   .prescription-sheet.ultra-dense-mode .patient-section {
-    margin-bottom: 4px !important;
+    margin-bottom: 5px !important;
   }
   .prescription-sheet.ultra-dense-mode .medicines-box {
-    margin-bottom: 4px !important;
+    margin-bottom: 5px !important;
   }
   .prescription-sheet.ultra-dense-mode .medicines-box h3 {
-    font-size: 10.5px !important;
+    font-size: 11px !important;
     margin-bottom: 2px !important;
   }
   .prescription-sheet.ultra-dense-mode .patient-info-box {
-    font-size: 9.5px !important;
+    font-size: 10.5px !important;
   }
   .prescription-sheet.ultra-dense-mode .patient-info-box > :not([hidden]) ~ :not([hidden]) {
-    margin-top: 1px !important;
+    margin-top: 1.5px !important;
   }
   .prescription-sheet.ultra-dense-mode .diagnosis-box {
-    font-size: 9.5px !important;
+    font-size: 10.5px !important;
   }
   .prescription-sheet.ultra-dense-mode .medicines-list > :not([hidden]) ~ :not([hidden]) {
-    margin-top: 2px !important;
-  }
-  .prescription-sheet.ultra-dense-mode .prescription-item {
-    font-size: 9.5px !important;
-  }
-  .prescription-sheet.ultra-dense-mode .notes-box {
-    margin-bottom: 3px !important;
-    font-size: 9.5px !important;
-  }
-  .prescription-sheet.ultra-dense-mode .prescription-footer {
     margin-top: 3px !important;
   }
+  .prescription-sheet.ultra-dense-mode .prescription-item {
+    font-size: 10.5px !important;
+  }
+  .prescription-sheet.ultra-dense-mode .notes-box {
+    margin-bottom: 4px !important;
+    font-size: 10.5px !important;
+  }
+  .prescription-sheet.ultra-dense-mode .prescription-footer {
+    margin-top: auto !important;
+  }
+  /* Ô ký tên vẫn cao 48px thoải mái ký tên và đóng dấu, không bị chiếm mất */
   .prescription-sheet.ultra-dense-mode .prescription-footer .signature-gap {
-    height: 22px !important;
+    height: 48px !important;
   }
 }
 
