@@ -198,60 +198,67 @@ input[type="number"] {
     border-bottom-width: 1px !important;
   }
 
-  /* Thu gọn khoảng cách các khối khi in */
+  /* Khoảng cách và kích cỡ các khối khi in theo đúng yêu cầu: chữ to rõ, cách khoảng trắng 1 dòng */
   .prescription-sheet .prescription-header {
     margin-top: 0 !important;
-    margin-bottom: 3px !important;
+    margin-bottom: 14px !important;
     padding: 0 !important;
   }
   .prescription-sheet .prescription-header h3 {
-    font-size: 11px !important;
-    margin-bottom: 1px !important;
+    font-size: 13px !important;
+    margin-bottom: 3px !important;
+    font-weight: 700 !important;
   }
   .prescription-sheet .prescription-header h2 {
-    font-size: 17px !important;
+    font-size: 22px !important;
     margin-bottom: 0 !important;
     line-height: 1.2 !important;
+    font-weight: 900 !important;
   }
 
+  .prescription-sheet .patient-section {
+    margin-bottom: 14px !important;
+  }
   .prescription-sheet .patient-info-box {
     margin-bottom: 4px !important;
-    font-size: 11px !important;
+    font-size: 12.5px !important;
   }
   .prescription-sheet .patient-info-box > :not([hidden]) ~ :not([hidden]) {
-    margin-top: 2px !important;
+    margin-top: 3px !important;
     margin-bottom: 0 !important;
   }
 
   .prescription-sheet .diagnosis-box {
     margin-bottom: 3px !important;
-    font-size: 11px !important;
+    font-size: 12.5px !important;
   }
 
   .prescription-sheet .medicines-box {
-    margin-bottom: 4px !important;
+    margin-bottom: 14px !important;
   }
   .prescription-sheet .medicines-box h3 {
-    font-size: 11px !important;
-    margin-bottom: 2px !important;
+    font-size: 13.5px !important;
+    font-weight: 800 !important;
+    margin-bottom: 4px !important;
   }
 
   .prescription-sheet .medicines-list > :not([hidden]) ~ :not([hidden]) {
-    margin-top: 3px !important;
+    margin-top: 4px !important;
     margin-bottom: 0 !important;
   }
 
   .prescription-item {
-    font-size: 11px !important;
-    line-height: 1.25 !important;
+    font-size: 12.5px !important;
+    line-height: 1.3 !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
   .prescription-item .med-title {
-    margin-bottom: 1px !important;
+    margin-bottom: 2px !important;
+    font-weight: 700 !important;
   }
   .prescription-item .med-body {
-    padding-left: 8px !important;
+    padding-left: 10px !important;
   }
   .prescription-item .med-body > :not([hidden]) ~ :not([hidden]) {
     margin-top: 1px !important;
@@ -259,58 +266,90 @@ input[type="number"] {
   }
 
   .prescription-sheet .notes-box {
-    margin-bottom: 3px !important;
-    font-size: 11px !important;
+    margin-bottom: 10px !important;
+    font-size: 12.5px !important;
   }
   .prescription-sheet .notes-box > :not([hidden]) ~ :not([hidden]) {
-    margin-top: 2px !important;
+    margin-top: 3px !important;
     margin-bottom: 0 !important;
   }
 
   .prescription-footer {
-    margin-top: 2px !important;
+    margin-top: 4px !important;
     margin-bottom: 0 !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
   /* Khoảng trống ký tên rộng rãi, thoải mái ký và đóng dấu mà không tràn trang */
   .prescription-footer .signature-gap {
-    height: 48px !important;
+    height: 38px !important;
   }
 
   /* Khi có từ 5 thuốc trở lên: tự động kích hoạt chế độ thu gọn hơn */
   .prescription-sheet.dense-mode {
     padding: 3mm 6mm 2mm 6mm !important;
-    font-size: 10.5px !important;
-    line-height: 1.2 !important;
+    font-size: 11px !important;
+    line-height: 1.25 !important;
+  }
+  .prescription-sheet.dense-mode .prescription-header {
+    margin-bottom: 8px !important;
   }
   .prescription-sheet.dense-mode .prescription-header h2 {
-    font-size: 16px !important;
+    font-size: 18px !important;
+  }
+  .prescription-sheet.dense-mode .patient-section {
+    margin-bottom: 8px !important;
   }
   .prescription-sheet.dense-mode .patient-info-box {
-    margin-bottom: 3px !important;
+    margin-bottom: 2px !important;
+    font-size: 11px !important;
   }
   .prescription-sheet.dense-mode .patient-info-box > :not([hidden]) ~ :not([hidden]) {
     margin-top: 1.5px !important;
+  }
+  .prescription-sheet.dense-mode .diagnosis-box {
+    font-size: 11px !important;
+  }
+  .prescription-sheet.dense-mode .medicines-box {
+    margin-bottom: 8px !important;
+  }
+  .prescription-sheet.dense-mode .medicines-box h3 {
+    font-size: 11.5px !important;
   }
   .prescription-sheet.dense-mode .medicines-list > :not([hidden]) ~ :not([hidden]) {
     margin-top: 2px !important;
   }
   .prescription-sheet.dense-mode .prescription-item {
-    font-size: 10.5px !important;
+    font-size: 11px !important;
+  }
+  .prescription-sheet.dense-mode .notes-box {
+    margin-bottom: 6px !important;
+    font-size: 11px !important;
   }
   .prescription-sheet.dense-mode .prescription-footer .signature-gap {
-    height: 40px !important;
+    height: 32px !important;
   }
 
   /* Khi có từ 7 thuốc trở lên: siêu thu gọn */
   .prescription-sheet.ultra-dense-mode {
     padding: 2mm 5mm 2mm 5mm !important;
-    font-size: 9.5px !important;
-    line-height: 1.15 !important;
+    font-size: 10px !important;
+    line-height: 1.2 !important;
+  }
+  .prescription-sheet.ultra-dense-mode .prescription-header {
+    margin-bottom: 5px !important;
   }
   .prescription-sheet.ultra-dense-mode .prescription-header h2 {
-    font-size: 15px !important;
+    font-size: 16px !important;
+  }
+  .prescription-sheet.ultra-dense-mode .patient-section {
+    margin-bottom: 5px !important;
+  }
+  .prescription-sheet.ultra-dense-mode .medicines-box {
+    margin-bottom: 5px !important;
+  }
+  .prescription-sheet.ultra-dense-mode .medicines-box h3 {
+    font-size: 11px !important;
   }
   .prescription-sheet.ultra-dense-mode .patient-info-box > :not([hidden]) ~ :not([hidden]) {
     margin-top: 1px !important;
@@ -319,10 +358,14 @@ input[type="number"] {
     margin-top: 1.5px !important;
   }
   .prescription-sheet.ultra-dense-mode .prescription-item {
-    font-size: 9.5px !important;
+    font-size: 10px !important;
+  }
+  .prescription-sheet.ultra-dense-mode .notes-box {
+    margin-bottom: 4px !important;
+    font-size: 10px !important;
   }
   .prescription-sheet.ultra-dense-mode .prescription-footer .signature-gap {
-    height: 30px !important;
+    height: 24px !important;
   }
 }
 

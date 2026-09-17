@@ -535,7 +535,10 @@ export default function DiagnosisPage() {
 
       const fee = Number(newDiag.serviceFee) || 0;
       const savedDiagRecord = { id: editingDiagId, ...newDiag, serviceFee: fee, patientId: finalPatientId };
-      setDiagnoses(diagnoses.map(d => d.id === editingDiagId ? savedDiagRecord : d));
+      const updatedList = diagnoses.map(d => d.id === editingDiagId ? savedDiagRecord : d);
+      setDiagnoses(updatedList);
+      localStorage.setItem("khambenh_diagnosis", JSON.stringify(updatedList));
+      window.dispatchEvent(new Event("khambenh_diagnosis_updated"));
       syncDiagnosisToMedicalSummary(savedDiagRecord);
     } else {
       let finalPatientId = newDiag.patientId;
@@ -548,7 +551,10 @@ export default function DiagnosisPage() {
       const nextId = nums.length > 0 ? Math.max(...nums) + 1 : 1;
       const fee = Number(newDiag.serviceFee) || 0;
       const savedDiagRecord = { id: nextId, ...newDiag, serviceFee: fee, patientId: finalPatientId };
-      setDiagnoses([savedDiagRecord, ...diagnoses]);
+      const updatedList = [savedDiagRecord, ...diagnoses];
+      setDiagnoses(updatedList);
+      localStorage.setItem("khambenh_diagnosis", JSON.stringify(updatedList));
+      window.dispatchEvent(new Event("khambenh_diagnosis_updated"));
       syncDiagnosisToMedicalSummary(savedDiagRecord);
 
       // Deduct new stock (ch? trừ khi đơn vị khớp)
@@ -663,6 +669,8 @@ export default function DiagnosisPage() {
       if (currentPage > newTotal && newTotal > 0) {
         setCurrentPage(newTotal);
       }
+      localStorage.setItem("khambenh_diagnosis", JSON.stringify(updated));
+      window.dispatchEvent(new Event("khambenh_diagnosis_updated"));
       return updated;
     });
     removeDiagnosisFromMedicalSummary(id, diagToDelete.patientId);
@@ -1402,135 +1410,137 @@ export default function DiagnosisPage() {
                 </button>
 
                 {/* Header Đơn Thuốc */}
-                <div className="prescription-header text-center mb-4 mt-1 px-4">
-                  <h3 className="text-sm sm:text-base font-bold uppercase tracking-wide text-slate-700 mb-1">
+                <div className="prescription-header text-center mb-6 sm:mb-7 mt-1 px-4">
+                  <h3 className="text-base sm:text-lg font-bold uppercase tracking-wide text-slate-800 mb-1.5">
                     PHÒNG KHÁM NHI BS NAM – BS PHỤNG
                   </h3>
-                  <h2 className="text-2xl font-bold uppercase tracking-wider text-slate-900">
+                  <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-wider text-slate-900">
                     ĐƠN THUỐC
                   </h2>
                 </div>
 
-                {/* Thông tin bệnh nhân */}
-                {(() => {
-                  const pt = savedPatients.find((p: any) => viewingPrescription.patientId ? p.id === viewingPrescription.patientId : p.name === viewingPrescription.patientName) || {};
-                  const ptCode = getPatientCode(viewingPrescription);
-                  const displayPtCode = ptCode !== "-" ? ptCode : (viewingPrescription.patientId || (pt as any).id || "");
-                  return (
-                    <div className="patient-info-box space-y-2.5 mb-4 text-sm">
-                      <div className="flex gap-4 items-end">
-                        <div className="flex gap-2 items-end flex-1">
-                          <span className="font-semibold whitespace-nowrap">Họ tên:</span>
-                          <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2 font-medium">
-                            <span style={{ position: "relative", top: "3px" }}>{viewingPrescription.patientName}</span>
-                          </span>
+                {/* Thông tin bệnh nhân & Chẩn đoán */}
+                <div className="patient-section mb-6 sm:mb-7">
+                  {(() => {
+                    const pt = savedPatients.find((p: any) => viewingPrescription.patientId ? p.id === viewingPrescription.patientId : p.name === viewingPrescription.patientName) || {};
+                    const ptCode = getPatientCode(viewingPrescription);
+                    const displayPtCode = ptCode !== "-" ? ptCode : (viewingPrescription.patientId || (pt as any).id || "");
+                    return (
+                      <div className="patient-info-box space-y-3 mb-3 text-[14px] sm:text-[15px]">
+                        <div className="flex gap-4 items-end">
+                          <div className="flex gap-2 items-end flex-1">
+                            <span className="font-bold whitespace-nowrap text-slate-800">Họ tên:</span>
+                            <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2 font-medium">
+                              <span style={{ position: "relative", top: "3px" }}>{viewingPrescription.patientName}</span>
+                            </span>
+                          </div>
+                          <div className="flex gap-2 items-end w-36 shrink-0">
+                            <span className="font-bold whitespace-nowrap text-slate-800">Mã BN:</span>
+                            <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2 font-mono font-bold text-blue-700">
+                              <span style={{ position: "relative", top: "3px" }}>{displayPtCode}</span>
+                            </span>
+                          </div>
                         </div>
-                        <div className="flex gap-2 items-end w-36 shrink-0">
-                          <span className="font-semibold whitespace-nowrap">Mã BN:</span>
-                          <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2 font-mono font-bold text-blue-700">
-                            <span style={{ position: "relative", top: "3px" }}>{displayPtCode}</span>
+                        <div className="flex gap-4 items-end">
+                          <div className="flex gap-2 items-end flex-1 whitespace-nowrap">
+                            <span className="font-bold whitespace-nowrap text-slate-800">Ngày sinh:</span>
+                            <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2 whitespace-nowrap">
+                              <span style={{ position: "relative", top: "3px" }}>
+                                {(pt as any).dob ? `${formatDisplayDate((pt as any).dob)} (${calculateAge((pt as any).dob)})` : ""}
+                              </span>
+                            </span>
+                          </div>
+                          <div className="flex gap-2 items-end w-36 shrink-0">
+                            <span className="font-bold whitespace-nowrap text-slate-800">Giới tính:</span>
+                            <span className="flex-1 border-b-2 border-dotted border-slate-300 flex items-center justify-around pb-1 text-xs sm:text-sm whitespace-nowrap">
+                              <label className="flex items-center gap-1"><input type="checkbox" className="w-3.5 h-3.5" readOnly checked={(pt as any).gender === "Nam"} /> Nam</label>
+                              <label className="flex items-center gap-1"><input type="checkbox" className="w-3.5 h-3.5" readOnly checked={(pt as any).gender === "Nữ"} /> Nữ</label>
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex gap-3 items-end flex-wrap text-[13px] sm:text-[14px]">
+                          <div className="flex gap-1.5 items-end">
+                            <span className="font-bold whitespace-nowrap text-slate-800">Cân nặng:</span>
+                            <span className="border-b-2 border-dotted border-slate-300 px-1.5 min-w-[40px]">
+                              <span style={{ position: "relative", top: "3px" }}>
+                                {viewingPrescription.weight || (pt as any).weight ? `${viewingPrescription.weight || (pt as any).weight} kg` : ""}
+                              </span>
+                            </span>
+                          </div>
+                          <div className="flex gap-1.5 items-end">
+                            <span className="font-bold whitespace-nowrap text-slate-800">Chiều cao:</span>
+                            <span className="border-b-2 border-dotted border-slate-300 px-1.5 min-w-[40px]">
+                              <span style={{ position: "relative", top: "3px" }}>
+                                {(pt as any).height ? `${(pt as any).height} cm` : ""}
+                              </span>
+                            </span>
+                          </div>
+                          <div className="flex gap-1.5 items-end">
+                            <span className="font-bold whitespace-nowrap text-slate-800">BMI:</span>
+                            <span className="border-b-2 border-dotted border-slate-300 px-1.5 min-w-[35px]">
+                              <span style={{ position: "relative", top: "3px" }}>
+                                {(() => {
+                                  const curW = viewingPrescription.weight || (pt as any).weight;
+                                  const curH = (pt as any).height;
+                                  return curW && curH ? calculateBMI(curW, curH) : "";
+                                })()}
+                              </span>
+                            </span>
+                          </div>
+                          <div className="flex gap-1.5 items-end">
+                            <span className="font-bold whitespace-nowrap text-slate-800">NĐ:</span>
+                            <span className="border-b-2 border-dotted border-slate-300 px-1.5 min-w-[35px]">
+                              <span style={{ position: "relative", top: "3px" }}>
+                                {(pt as any).temperature ? `${(pt as any).temperature} °C` : ""}
+                              </span>
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 items-end">
+                          <span className="font-bold whitespace-nowrap text-slate-800">Địa chỉ:</span>
+                          <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2">
+                            <span style={{ position: "relative", top: "3px" }}>{(pt as any).address || ""}</span>
                           </span>
                         </div>
                       </div>
-                      <div className="flex gap-4 items-end">
-                        <div className="flex gap-2 items-end flex-1 whitespace-nowrap">
-                          <span className="font-semibold whitespace-nowrap">Ngày sinh:</span>
-                          <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2 whitespace-nowrap">
-                            <span style={{ position: "relative", top: "3px" }}>
-                              {(pt as any).dob ? `${formatDisplayDate((pt as any).dob)} (${calculateAge((pt as any).dob)})` : ""}
-                            </span>
-                          </span>
-                        </div>
-                        <div className="flex gap-2 items-end w-36 shrink-0">
-                          <span className="font-semibold whitespace-nowrap">Giới tính:</span>
-                          <span className="flex-1 border-b-2 border-dotted border-slate-300 flex items-center justify-around pb-1 text-xs whitespace-nowrap">
-                            <label className="flex items-center gap-1"><input type="checkbox" className="w-3 h-3" readOnly checked={(pt as any).gender === "Nam"} /> Nam</label>
-                            <label className="flex items-center gap-1"><input type="checkbox" className="w-3 h-3" readOnly checked={(pt as any).gender === "Nữ"} /> Nữ</label>
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex gap-3 items-end flex-wrap text-xs sm:text-sm">
-                        <div className="flex gap-1.5 items-end">
-                          <span className="font-semibold whitespace-nowrap">Cân nặng:</span>
-                          <span className="border-b-2 border-dotted border-slate-300 px-1.5 min-w-[40px]">
-                            <span style={{ position: "relative", top: "3px" }}>
-                              {viewingPrescription.weight || (pt as any).weight ? `${viewingPrescription.weight || (pt as any).weight} kg` : ""}
-                            </span>
-                          </span>
-                        </div>
-                        <div className="flex gap-1.5 items-end">
-                          <span className="font-semibold whitespace-nowrap">Chiều cao:</span>
-                          <span className="border-b-2 border-dotted border-slate-300 px-1.5 min-w-[40px]">
-                            <span style={{ position: "relative", top: "3px" }}>
-                              {(pt as any).height ? `${(pt as any).height} cm` : ""}
-                            </span>
-                          </span>
-                        </div>
-                        <div className="flex gap-1.5 items-end">
-                          <span className="font-semibold whitespace-nowrap">BMI:</span>
-                          <span className="border-b-2 border-dotted border-slate-300 px-1.5 min-w-[35px]">
-                            <span style={{ position: "relative", top: "3px" }}>
-                              {(() => {
-                                const curW = viewingPrescription.weight || (pt as any).weight;
-                                const curH = (pt as any).height;
-                                return curW && curH ? calculateBMI(curW, curH) : "";
-                              })()}
-                            </span>
-                          </span>
-                        </div>
-                        <div className="flex gap-1.5 items-end">
-                          <span className="font-semibold whitespace-nowrap">NĐ:</span>
-                          <span className="border-b-2 border-dotted border-slate-300 px-1.5 min-w-[35px]">
-                            <span style={{ position: "relative", top: "3px" }}>
-                              {(pt as any).temperature ? `${(pt as any).temperature} °C` : ""}
-                            </span>
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex gap-2 items-end">
-                        <span className="font-semibold whitespace-nowrap">Địa chỉ:</span>
-                        <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2">
-                          <span style={{ position: "relative", top: "3px" }}>{(pt as any).address || ""}</span>
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })()}
+                    );
+                  })()}
 
-                <div className="diagnosis-box flex gap-2 items-end mb-2 text-sm">
-                  <span className="font-semibold whitespace-nowrap">Chẩn đoán:</span>
-                  <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2 font-medium">
-                    <span style={{ position: "relative", top: "3px" }}>{viewingPrescription.diagnosis}</span>
-                  </span>
-                </div>
-
-                {viewingPrescription.medicalHistory && (
-                  <div className="diagnosis-box flex gap-2 items-end mb-3 text-sm">
-                    <span className="font-semibold whitespace-nowrap">Bệnh sử – Khám:</span>
-                    <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2">
-                      <span style={{ position: "relative", top: "3px" }}>{viewingPrescription.medicalHistory}</span>
+                  <div className="diagnosis-box flex gap-2 items-end mb-2.5 text-[14px] sm:text-[15px]">
+                    <span className="font-bold whitespace-nowrap text-slate-800">Chẩn đoán:</span>
+                    <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2 font-medium">
+                      <span style={{ position: "relative", top: "3px" }}>{viewingPrescription.diagnosis}</span>
                     </span>
                   </div>
-                )}
+
+                  {viewingPrescription.medicalHistory && (
+                    <div className="diagnosis-box flex gap-2 items-end text-[14px] sm:text-[15px]">
+                      <span className="font-bold whitespace-nowrap text-slate-800">Bệnh sử – Khám:</span>
+                      <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2">
+                        <span style={{ position: "relative", top: "3px" }}>{viewingPrescription.medicalHistory}</span>
+                      </span>
+                    </div>
+                  )}
+                </div>
 
                 {/* Danh sách thuốc */}
-                <div className="medicines-box mb-4">
-                  <h3 className="font-bold text-sm mb-2 uppercase tracking-wide text-slate-800">Thuốc điều trị:</h3>
-                  <div className="medicines-list space-y-3">
+                <div className="medicines-box mb-6 sm:mb-7">
+                  <h3 className="font-black text-sm sm:text-base mb-3 uppercase tracking-wide text-slate-900">THUỐC ĐIỀU TRỊ:</h3>
+                  <div className="medicines-list space-y-3 sm:space-y-3.5">
                     {medList.map((item: any, idx: number) => (
-                      <div key={idx} className="prescription-item text-sm">
-                        <div className="med-title font-bold mb-1">
+                      <div key={idx} className="prescription-item text-[14px] sm:text-[15px]">
+                        <div className="med-title font-bold mb-1 text-slate-900">
                           {idx + 1}/ {item.name}
                         </div>
-                        <div className="med-body pl-4 text-slate-700 space-y-1">
+                        <div className="med-body pl-4 text-slate-800 space-y-1">
                           {item.notes && <div className="text-slate-600 italic text-xs mb-0.5">- Ghi chú: {item.notes}</div>}
                           <div className="flex flex-wrap gap-x-3 gap-y-1 items-baseline">
                             <div className="flex items-baseline gap-1 shrink-0">
-                              <span>- Số lượng:</span>
-                              <span className="border-b-2 border-dotted border-slate-300 min-w-[44px] text-center font-bold px-1.5">
+                              <span className="font-medium">- Số lượng:</span>
+                              <span className="border-b-2 border-dotted border-slate-300 min-w-[44px] text-center font-bold px-1.5 text-slate-900">
                                 <span style={{ position: "relative", top: "2px" }}>{item.quantity}</span>
                               </span>
-                              <span>{item.unit}</span>
+                              <span className="font-medium">{item.unit}</span>
                             </div>
                             <div className="flex-1 min-w-[200px]">
                               <span>Uống mỗi ngày {item.medTimes || "...."} lần, mỗi lần {item.medAmount || "...."} {item.medCustomUnit || item.unit || "viên"}, trong {item.medDays || "...."} ngày.</span>
@@ -1543,16 +1553,16 @@ export default function DiagnosisPage() {
                 </div>
 
                 {/* Ghi chú & Tái khám */}
-                <div className="notes-box space-y-2 mb-3 text-sm">
+                <div className="notes-box space-y-2.5 mb-6 text-[14px] sm:text-[15px]">
                   <div className="flex gap-2 items-end">
-                    <span className="font-semibold whitespace-nowrap">Ghi chú:</span>
-                    <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2">
+                    <span className="font-bold whitespace-nowrap text-slate-800">Ghi chú:</span>
+                    <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2 font-medium">
                       <span style={{ position: "relative", top: "3px" }}>{viewingPrescription.notes}</span>
                     </span>
                   </div>
                   <div className="flex gap-2 items-end">
-                    <span className="font-semibold whitespace-nowrap text-red-600">Tái khám:</span>
-                    <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2 text-slate-800 font-medium">
+                    <span className="font-bold whitespace-nowrap text-red-600">Tái khám:</span>
+                    <span className="flex-1 border-b-2 border-dotted border-slate-300 px-2 text-slate-900 font-bold">
                       <span style={{ position: "relative", top: "3px" }}>{viewingPrescription.followUpDate}</span>
                     </span>
                   </div>
