@@ -150,7 +150,7 @@ export default function DiagnosisPage() {
     return dateStr;
   };
 
-  const [newDiag, setNewDiag] = useState<any>({ patientName: "", patientId: "", weight: "", doctorName: "", diagnosis: "", medicalHistory: "", date: getCurrentFormattedDate(), followUpDate: "", serviceName: "", serviceFee: 80000, notes: "", medicines: [{ ...EMPTY_MED_LINE }] });
+  const [newDiag, setNewDiag] = useState<any>({ patientName: "", patientId: "", weight: "", doctorName: "", diagnosis: "", medicalHistory: "", date: getCurrentFormattedDate(), followUpDate: "", serviceName: "", serviceFee: 50000, notes: "", medicines: [{ ...EMPTY_MED_LINE }] });
   const [editingDiagId, setEditingDiagId] = useState<number | null>(null);
   const [deletingDiag, setDeletingDiag] = useState<any | null>(null);
   const [error, setError] = useState("");
@@ -425,7 +425,7 @@ export default function DiagnosisPage() {
     }
   }, [newDiag, showAddModal, editingDiagId, isLoaded]);
 
-  const resetNewDiag = () => ({ patientName: "", patientId: "", weight: "", doctorName: "", diagnosis: "", medicalHistory: "", date: getCurrentFormattedDate(), followUpDate: "", serviceName: "", serviceFee: 80000, notes: "", medicines: [{ ...EMPTY_MED_LINE }] });
+  const resetNewDiag = () => ({ patientName: "", patientId: "", weight: "", doctorName: "", diagnosis: "", medicalHistory: "", date: getCurrentFormattedDate(), followUpDate: "", serviceName: "", serviceFee: 50000, notes: "", medicines: [{ ...EMPTY_MED_LINE }] });
 
   const handleSaveDiag = () => {
     if (!newDiag.patientName.trim() || !newDiag.diagnosis.trim()) {
@@ -859,7 +859,15 @@ export default function DiagnosisPage() {
             if (savedPts) { try { setSavedPatients(JSON.parse(savedPts)); } catch (e) { } }
             const draft = localStorage.getItem("khambenh_draft_diag");
             if (draft) {
-              try { setNewDiag(JSON.parse(draft)); } catch { setNewDiag(resetNewDiag()); }
+              try {
+                const parsed = JSON.parse(draft);
+                if (parsed && (parsed.serviceFee === 80000 || !parsed.serviceFee)) {
+                  parsed.serviceFee = 50000;
+                }
+                setNewDiag(parsed);
+              } catch {
+                setNewDiag(resetNewDiag());
+              }
             } else {
               setNewDiag(resetNewDiag());
             }
@@ -1112,7 +1120,7 @@ export default function DiagnosisPage() {
                           setNewDiag({ ...newDiag, serviceFee: raw === "" ? "" : Number(raw) });
                         }}
                         className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-900"
-                        placeholder="80000"
+                        placeholder="50000"
                       />
                     </div>
                   </div>
