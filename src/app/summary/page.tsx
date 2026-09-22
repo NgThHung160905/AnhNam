@@ -1419,13 +1419,13 @@ export default function SummaryPage() {
                 </div>
 
                 {/* Thông tin bệnh nhân & Chẩn đoán */}
-                <div className="patient-section mb-6 sm:mb-7">
+                <div className="patient-section mb-5 sm:mb-6">
                   {(() => {
                     const pt = savedPatients.find((p: any) => viewingPrescription.patientId ? p.id === viewingPrescription.patientId : p.name === viewingPrescription.patientName) || {};
                     const ptCode = getPatientCode(viewingPrescription);
                     const displayPtCode = ptCode !== "-" ? ptCode : (viewingPrescription.patientId || (pt as any).id || "");
                     return (
-                      <div className="patient-info-box space-y-3 mb-3 text-[14px] sm:text-[15px]">
+                      <div className="patient-info-box space-y-1.5 sm:space-y-2 text-[14px] sm:text-[15px]">
                         <div className="flex gap-4 items-end">
                           <div className="flex gap-2 items-end flex-1 min-w-0">
                             <span className="font-bold whitespace-nowrap text-slate-800">Họ và tên:</span>
@@ -1500,23 +1500,21 @@ export default function SummaryPage() {
                             <span style={{ position: "relative", top: "3px", wordBreak: "break-word", overflowWrap: "anywhere" }}>{(pt as any).address || ""}</span>
                           </span>
                         </div>
+                        <div className="diagnosis-box flex gap-2 items-baseline w-full min-w-0">
+                          <span className="font-bold whitespace-nowrap text-slate-800 shrink-0">Bệnh sử – Khám:</span>
+                          <span className="flex-1 min-w-0 border-b-2 border-dotted border-slate-300 px-2 break-all font-medium">
+                            <span style={{ position: "relative", top: "3px", wordBreak: "break-word", overflowWrap: "anywhere" }}>{viewingPrescription.medicalHistory || ""}</span>
+                          </span>
+                        </div>
+                        <div className="diagnosis-box flex gap-2 items-baseline w-full min-w-0">
+                          <span className="font-bold whitespace-nowrap text-slate-800 shrink-0">Chẩn đoán:</span>
+                          <span className="flex-1 min-w-0 border-b-2 border-dotted border-slate-300 px-2 font-medium break-all">
+                            <span style={{ position: "relative", top: "3px", wordBreak: "break-word", overflowWrap: "anywhere" }}>{viewingPrescription.diagnosis || ""}</span>
+                          </span>
+                        </div>
                       </div>
                     );
                   })()}
-
-                  <div className="diagnosis-box flex gap-2 items-baseline w-full min-w-0 mb-2.5 text-[14px] sm:text-[15px]">
-                    <span className="font-bold whitespace-nowrap text-slate-800 shrink-0">Bệnh sử – Khám:</span>
-                    <span className="flex-1 min-w-0 border-b-2 border-dotted border-slate-300 px-2 break-all font-medium">
-                      <span style={{ position: "relative", top: "3px", wordBreak: "break-word", overflowWrap: "anywhere" }}>{viewingPrescription.medicalHistory || ""}</span>
-                    </span>
-                  </div>
-
-                  <div className="diagnosis-box flex gap-2 items-baseline w-full min-w-0 text-[14px] sm:text-[15px]">
-                    <span className="font-bold whitespace-nowrap text-slate-800 shrink-0">Chẩn đoán:</span>
-                    <span className="flex-1 min-w-0 border-b-2 border-dotted border-slate-300 px-2 font-medium break-all">
-                      <span style={{ position: "relative", top: "3px", wordBreak: "break-word", overflowWrap: "anywhere" }}>{viewingPrescription.diagnosis || ""}</span>
-                    </span>
-                  </div>
                 </div>
 
                 {/* Danh sách thuốc */}
