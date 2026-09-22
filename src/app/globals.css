@@ -216,7 +216,7 @@ input[type="number"] {
      -------------------------------------------------------------------------- */
   .prescription-sheet,
   .prescription-sheet.spacious-mode {
-    padding: 5mm 8mm 3mm 8mm !important;
+    padding: 7mm 8mm 3mm 8mm !important;
   }
 
   .prescription-sheet .prescription-header,
@@ -224,19 +224,30 @@ input[type="number"] {
     margin-top: 0 !important;
     margin-bottom: 12px !important;
     padding: 0 !important;
+    text-align: left !important;
   }
   .prescription-sheet .prescription-header h3,
   .prescription-sheet.spacious-mode .prescription-header h3 {
     font-size: 13.5px !important;
-    margin-bottom: 2px !important;
+    margin-bottom: 1.5px !important;
     font-weight: 700 !important;
+    text-align: left !important;
+  }
+  .prescription-sheet .prescription-header p,
+  .prescription-sheet.spacious-mode .prescription-header p {
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    text-align: left !important;
+    margin-bottom: 0 !important;
   }
   .prescription-sheet .prescription-header h2,
   .prescription-sheet.spacious-mode .prescription-header h2 {
     font-size: 22px !important;
+    margin-top: 6px !important;
     margin-bottom: 0 !important;
     line-height: 1.2 !important;
     font-weight: 900 !important;
+    text-align: center !important;
   }
 
   /* Đồng bộ kích cỡ chữ đồng nhất 100% cho TOÀN BỘ thông tin bệnh nhân (Họ tên, Mã BN, Ngày sinh, Giới tính, Cân nặng, Chiều cao, BMI, NĐ, Địa chỉ, Chẩn đoán, Bệnh sử) */
@@ -311,12 +322,12 @@ input[type="number"] {
   .prescription-sheet.spacious-mode .notes-box,
   .prescription-sheet .followup-box,
   .prescription-sheet.spacious-mode .followup-box {
-    margin-bottom: 6px !important;
+    margin-bottom: 4px !important;
     font-size: 12.5px !important;
   }
   .prescription-sheet .notes-box > :not([hidden]) ~ :not([hidden]),
   .prescription-sheet.spacious-mode .notes-box > :not([hidden]) ~ :not([hidden]) {
-    margin-top: 3px !important;
+    margin-top: 2px !important;
     margin-bottom: 0 !important;
   }
   .prescription-sheet .prescription-notes-col,
@@ -347,16 +358,24 @@ input[type="number"] {
      Khoảng cách cân đối, ô ký tên 38px, vừa vặn 1 trang
      -------------------------------------------------------------------------- */
   .prescription-sheet.standard-mode {
-    padding: 4mm 8mm 3mm 8mm !important;
+    padding: 6mm 8mm 3mm 8mm !important;
   }
   .prescription-sheet.standard-mode .prescription-header {
     margin-bottom: 10px !important;
+    text-align: left !important;
   }
   .prescription-sheet.standard-mode .prescription-header h3 {
     font-size: 13px !important;
+    text-align: left !important;
+  }
+  .prescription-sheet.standard-mode .prescription-header p {
+    font-size: 11.5px !important;
+    text-align: left !important;
   }
   .prescription-sheet.standard-mode .prescription-header h2 {
     font-size: 20px !important;
+    text-align: center !important;
+    margin-top: 5px !important;
   }
   .prescription-sheet.standard-mode .patient-section,
   .prescription-sheet.standard-mode .patient-section *,
@@ -387,7 +406,7 @@ input[type="number"] {
   }
   .prescription-sheet.standard-mode .notes-box,
   .prescription-sheet.standard-mode .followup-box {
-    margin-bottom: 5px !important;
+    margin-bottom: 3.5px !important;
     font-size: 12px !important;
   }
   .prescription-sheet.standard-mode .prescription-notes-col,
@@ -407,15 +426,26 @@ input[type="number"] {
      Thu gọn vừa phải, ô ký tên 34px rộng rãi, không tràn trang
      -------------------------------------------------------------------------- */
   .prescription-sheet.dense-mode {
-    padding: 3mm 7mm 2mm 7mm !important;
+    padding: 4.5mm 7mm 2mm 7mm !important;
     font-size: 11px !important;
     line-height: 1.2 !important;
   }
   .prescription-sheet.dense-mode .prescription-header {
     margin-bottom: 6px !important;
+    text-align: left !important;
+  }
+  .prescription-sheet.dense-mode .prescription-header h3 {
+    font-size: 12px !important;
+    text-align: left !important;
+  }
+  .prescription-sheet.dense-mode .prescription-header p {
+    font-size: 10.5px !important;
+    text-align: left !important;
   }
   .prescription-sheet.dense-mode .prescription-header h2 {
     font-size: 18px !important;
+    text-align: center !important;
+    margin-top: 4px !important;
   }
   .prescription-sheet.dense-mode .patient-section,
   .prescription-sheet.dense-mode .patient-section *,
@@ -449,7 +479,7 @@ input[type="number"] {
   }
   .prescription-sheet.dense-mode .notes-box,
   .prescription-sheet.dense-mode .followup-box {
-    margin-bottom: 3px !important;
+    margin-bottom: 2.5px !important;
     font-size: 11px !important;
   }
   .prescription-sheet.dense-mode .prescription-notes-col,
@@ -469,15 +499,26 @@ input[type="number"] {
      Siêu thu gọn, ô ký tên 30px, đảm bảo 7-10 thuốc vẫn nằm trọn vẹn trong 1 trang duy nhất!
      -------------------------------------------------------------------------- */
   .prescription-sheet.ultra-dense-mode {
-    padding: 2mm 6mm 2mm 6mm !important;
+    padding: 3mm 6mm 2mm 6mm !important;
     font-size: 10px !important;
     line-height: 1.15 !important;
   }
   .prescription-sheet.ultra-dense-mode .prescription-header {
     margin-bottom: 4px !important;
+    text-align: left !important;
+  }
+  .prescription-sheet.ultra-dense-mode .prescription-header h3 {
+    font-size: 11px !important;
+    text-align: left !important;
+  }
+  .prescription-sheet.ultra-dense-mode .prescription-header p {
+    font-size: 9.5px !important;
+    text-align: left !important;
   }
   .prescription-sheet.ultra-dense-mode .prescription-header h2 {
     font-size: 16px !important;
+    text-align: center !important;
+    margin-top: 3px !important;
   }
   .prescription-sheet.ultra-dense-mode .patient-section,
   .prescription-sheet.ultra-dense-mode .patient-section *,
