@@ -249,6 +249,22 @@ input[type="number"] {
     font-weight: 900 !important;
     text-align: center !important;
   }
+  .prescription-sheet .prescription-header-top,
+  .prescription-sheet.spacious-mode .prescription-header-top {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: flex-start !important;
+    width: 100% !important;
+  }
+  .prescription-sheet .patient-code-top,
+  .prescription-sheet.spacious-mode .patient-code-top {
+    text-align: right !important;
+    white-space: nowrap !important;
+  }
+  .prescription-sheet .patient-code-top *,
+  .prescription-sheet.spacious-mode .patient-code-top * {
+    font-size: 13px !important;
+  }
 
   /* Đồng bộ kích cỡ chữ đồng nhất 100% cho TOÀN BỘ thông tin bệnh nhân (Họ tên, Mã BN, Ngày sinh, Giới tính, Cân nặng, Chiều cao, BMI, NĐ, Địa chỉ, Chẩn đoán, Bệnh sử) */
   .prescription-sheet .patient-section,
@@ -377,6 +393,8 @@ input[type="number"] {
     text-align: center !important;
     margin-top: 5px !important;
   }
+  .prescription-sheet.standard-mode .patient-code-top,
+  .prescription-sheet.standard-mode .patient-code-top *,
   .prescription-sheet.standard-mode .patient-section,
   .prescription-sheet.standard-mode .patient-section *,
   .prescription-sheet.standard-mode .patient-info-box,
@@ -447,6 +465,8 @@ input[type="number"] {
     text-align: center !important;
     margin-top: 4px !important;
   }
+  .prescription-sheet.dense-mode .patient-code-top,
+  .prescription-sheet.dense-mode .patient-code-top *,
   .prescription-sheet.dense-mode .patient-section,
   .prescription-sheet.dense-mode .patient-section *,
   .prescription-sheet.dense-mode .patient-info-box,
@@ -520,6 +540,8 @@ input[type="number"] {
     text-align: center !important;
     margin-top: 3px !important;
   }
+  .prescription-sheet.ultra-dense-mode .patient-code-top,
+  .prescription-sheet.ultra-dense-mode .patient-code-top *,
   .prescription-sheet.ultra-dense-mode .patient-section,
   .prescription-sheet.ultra-dense-mode .patient-section *,
   .prescription-sheet.ultra-dense-mode .patient-info-box,
