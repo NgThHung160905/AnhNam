@@ -124,22 +124,15 @@ export default function PatientsPage() {
 
   // Kéo danh sách bệnh nhân thật từ Supabase!
   useEffect(() => {
-    const fetchPatients = async () => {
-      setLoading(true);
+    const saved = localStorage.getItem("khambenh_patients");
+    if (saved) {
       try {
-        const res = await fetch('/api/patients');
-        const data = await res.json();
-        if (data.success) {
-          setPatients(data.patients);
-        }
+        setPatients(JSON.parse(saved));
       } catch (e) {
-        console.error("Failed to fetch patients", e);
-      } finally {
-        setLoading(false);
-        setIsLoaded(true);
+        console.error("Failed to load patients from local storage", e);
       }
-    };
-    fetchPatients();
+    }
+    setIsLoaded(true);
   }, []);
 
   useEffect(() => {
@@ -248,8 +241,8 @@ export default function PatientsPage() {
                         <button
                           onClick={() => onViewMedicalSummary(patient)}
                           className={`p-1.5 rounded-lg transition-colors flex items-center justify-center cursor-pointer ${patient.gender?.toLowerCase().includes("nữ") || patient.gender?.toLowerCase().includes("female")
-                              ? "text-pink-600 hover:text-pink-700 hover:bg-pink-50"
-                              : "text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                            ? "text-pink-600 hover:text-pink-700 hover:bg-pink-50"
+                            : "text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
                             }`}
                           title="Tóm tắt bệnh án"
                           aria-label="Tóm tắt bệnh án"
